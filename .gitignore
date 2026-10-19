@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.next-dev/
+.env
+data/*.json
+data/snapshots/
+data/source-map.kml
+data/research/
+data/long-range/
+data/*.tmp
+data/state.lock
+*.tsbuildinfo

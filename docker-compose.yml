@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_USER: climato
+      POSTGRES_PASSWORD: climato
+      POSTGRES_DB: climato
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+volumes:
+  postgres:
