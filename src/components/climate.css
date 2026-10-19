@@ -1,0 +1,2043 @@
+.climate-app {
+  height: 100dvh;
+  background: #172b37;
+  font-family: "DM Sans", Arial, sans-serif;
+  color: #eaf1f4;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+.climate-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 44px;
+  background: #142631;
+  border-bottom: 1px solid #ffffff15;
+  flex-shrink: 0;
+}
+.climate-logo {
+  font:
+    700 25px Manrope,
+    sans-serif;
+  letter-spacing: -1px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.climate-logo span {
+  font:
+    10px "DM Sans",
+    sans-serif;
+  letter-spacing: 1.4px;
+  color: #8fa8b7;
+  border-left: 1px solid #51616a;
+  padding-left: 18px;
+}
+.climate-heading {
+  font-size: 13px;
+}
+.climate-heading span {
+  color: #9db4c2;
+  margin-left: 8px;
+}
+.climate-header > button {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #c8d8e2;
+  font-size: 12px;
+  padding: 9px 13px;
+  border: 1px solid #ffffff25;
+  border-radius: 5px;
+}
+.climate-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  isolation: isolate;
+  overflow: hidden;
+}
+.climate-stage .operational-map {
+  background: #62756f;
+}
+.climate-stage .leaflet-tile-pane {
+  filter: saturate(0.35) brightness(0.83) contrast(0.95);
+}
+.climate-stage .operational-heat {
+  filter: blur(9px);
+}
+.climate-overview,
+.climate-layers,
+.climate-zone-detail,
+.climate-method,
+.climate-legend {
+  position: absolute;
+  z-index: 500;
+  background: #172c38ee;
+  backdrop-filter: blur(14px);
+  border: 1px solid #ffffff20;
+  border-radius: 8px;
+  box-shadow: 0 5px 24px #0b1f3330;
+}
+.climate-overview {
+  left: 22px;
+  top: 24px;
+  width: 264px;
+  padding: 20px;
+}
+.climate-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: #9ab7c6;
+}
+.climate-overview h1 {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 13px 0 24px;
+  color: #fff;
+}
+.climate-main-number {
+  font-size: 47px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+.climate-main-number > span {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0;
+  font-weight: 400;
+  margin-top: 9px;
+  color: #e5eef2;
+}
+.climate-overview p {
+  font-size: 10px;
+  line-height: 1.6;
+  color: #a9bdc8;
+  margin: 12px 0 20px;
+}
+.climate-stats {
+  display: flex;
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid #ffffff20;
+  border-bottom: 1px solid #ffffff20;
+}
+.climate-stats strong {
+  display: block;
+  font-size: 23px;
+  font-weight: 500;
+}
+.climate-stats span {
+  display: block;
+  font-size: 9px;
+  color: #a9bdc8;
+  margin-top: 4px;
+}
+.climate-rule {
+  font-size: 10px;
+  color: #adc3cf;
+  line-height: 1.8;
+  margin: 15px 0;
+}
+.climate-zone-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #d7e7ef;
+  font-size: 10px;
+  padding-top: 8px;
+}
+.climate-zones {
+  max-height: 160px;
+  overflow: auto;
+  margin-top: 12px;
+  border-top: 1px solid #ffffff20;
+}
+.climate-zones button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 4px;
+  text-align: left;
+  font-size: 10px;
+  border-bottom: 1px solid #ffffff12;
+}
+.climate-zones button.active,
+.climate-zones button:hover {
+  background: #ffffff12;
+}
+.climate-zones small {
+  display: block;
+  color: #9eb3c0;
+  font-size: 8px;
+  margin-top: 4px;
+}
+.climate-zones strong {
+  text-align: right;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.climate-layers {
+  top: 24px;
+  right: 22px;
+  width: 184px;
+  padding: 16px 10px;
+}
+.climate-layers > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #a9bdc8;
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  padding: 0 8px 14px;
+}
+.climate-layers > button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  font-size: 11px;
+  padding: 11px 9px;
+  border-radius: 5px;
+  color: #c4d4dd;
+}
+.climate-layers > button.active {
+  background: #ffffff15;
+  color: #fff;
+}
+.climate-layers i {
+  width: 8px;
+  height: 8px;
+  border: 1px solid #9cbbca;
+  border-radius: 50%;
+}
+.climate-layers .active i {
+  background: #6bd1b3;
+  border-color: #6bd1b3;
+}
+.climate-layers label {
+  display: block;
+  padding: 14px 8px 0;
+  color: #adc3cf;
+  font-size: 9px;
+}
+.climate-layers input {
+  width: 100%;
+  display: block;
+  margin-top: 10px;
+  accent-color: #71c7b6;
+}
+.climate-timeline {
+  position: absolute;
+  z-index: 500;
+  bottom: 30px;
+  left: 22px;
+  right: 74px;
+  background: #132b38f5;
+  backdrop-filter: blur(15px);
+  border: 1px solid #ffffff20;
+  border-radius: 8px;
+  padding: 16px 18px 12px;
+  box-shadow: 0 5px 24px #0b1f3330;
+}
+.climate-timeline-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+  font-size: 11px;
+}
+.climate-timeline-heading span,
+.climate-timeline-heading button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.climate-timeline-heading button {
+  font-size: 10px;
+  color: #aec3cf;
+}
+.climate-weeks {
+  display: flex;
+  gap: 5px;
+  overflow: auto;
+  padding-bottom: 8px;
+}
+.climate-weeks > button {
+  flex: 1;
+  min-width: 74px;
+  text-align: left;
+  padding: 9px 8px;
+  border: 1px solid #ffffff17;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+.climate-weeks > button:first-child {
+  min-width: 125px;
+}
+.climate-weeks > button.active {
+  background: #c0e8df1a;
+  border-color: #80c9b8;
+}
+.climate-weeks span {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.climate-weeks small {
+  font-size: 9px;
+  color: #acc2cd;
+}
+.climate-week-bar {
+  height: 4px;
+  background: #ffffff16;
+  border-radius: 3px;
+  margin: 11px 0 7px;
+  overflow: hidden;
+}
+.climate-week-bar i {
+  height: 100%;
+  background: linear-gradient(90deg, #eec24e, #30a37e);
+  display: block;
+  border-radius: 3px;
+}
+.climate-source-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 8px;
+  color: #93afbf;
+  border-top: 1px solid #ffffff15;
+  padding-top: 10px;
+  margin-top: 5px;
+}
+.climate-legend {
+  right: 82px;
+  bottom: 228px;
+  width: 220px;
+  padding: 12px 14px;
+  font-size: 10px;
+}
+.climate-gradient {
+  height: 7px;
+  background: linear-gradient(90deg, #dc534c, #eec24e, #30a37e);
+  border-radius: 3px;
+  margin: 10px 0 7px;
+}
+.climate-legend > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #b9cad4;
+}
+.climate-zone-detail {
+  right: 22px;
+  top: 285px;
+  width: 300px;
+  padding: 20px;
+}
+.climate-zone-detail h2 {
+  font-size: 18px;
+  margin: 14px 0;
+}
+.climate-zone-detail > strong {
+  font-size: 16px;
+  color: #a1dfc9;
+  font-weight: 500;
+}
+.climate-zone-detail p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #b5cad5;
+  margin-top: 12px;
+}
+.climate-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  color: #9db6c5;
+}
+.climate-method {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 560px;
+  max-width: calc(100% - 32px);
+  max-height: 80%;
+  overflow: auto;
+  padding: 28px;
+  z-index: 700;
+  background: #152b38fa;
+}
+.climate-method h2 {
+  font-size: 20px;
+  margin: 0 24px 18px 0;
+}
+.climate-method p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #c0d1db;
+  margin-top: 12px;
+}
+.climate-method .climate-warning {
+  color: #f2c79b;
+}
+.climate-location-warning {
+  position: absolute;
+  left: 22px;
+  bottom: 229px;
+  z-index: 500;
+  color: #ffe1bc;
+  background: #5d3e29e8;
+  border: 1px solid #ffffff20;
+  border-radius: 5px;
+  font-size: 10px;
+  padding: 9px 12px;
+}
+.climate-error {
+  position: absolute;
+  top: 20px;
+  left: 30%;
+  z-index: 900;
+  padding: 20px;
+  background: #622e29;
+  border-radius: 6px;
+}
+.climate-error button {
+  margin-left: 20px;
+  text-decoration: underline;
+}
+.climate-management {
+  height: 100dvh;
+  padding-top: 34px;
+  position: relative;
+}
+.climate-management .console-app {
+  height: calc(100dvh - 34px);
+}
+.return-climate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 34px;
+  background: #36585a;
+  color: #e0f6ed;
+  font:
+    12px "DM Sans",
+    sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+}
+@media (max-width: 1000px) {
+  .climate-header {
+    gap: 20px;
+    padding: 0 15px;
+  }
+  .climate-logo span {
+    display: none;
+  }
+  .climate-heading {
+    font-size: 11px;
+  }
+  .climate-overview {
+    width: 235px;
+    left: 14px;
+    top: 16px;
+    padding: 16px;
+  }
+  .climate-layers {
+    right: 14px;
+    top: 16px;
+    width: 174px;
+  }
+  .climate-main-number {
+    font-size: 40px;
+  }
+  .climate-timeline {
+    left: 14px;
+    right: 65px;
+    padding: 13px;
+    bottom: 28px;
+  }
+  .climate-source-line {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .climate-legend {
+    bottom: 247px;
+    right: 70px;
+    width: 190px;
+  }
+  .climate-location-warning {
+    bottom: 247px;
+    left: 14px;
+  }
+  .climate-zone-detail {
+    right: 14px;
+    top: 277px;
+    width: 260px;
+  }
+  .climate-zones {
+    max-height: 90px;
+  }
+}
+@media (max-width: 600px) {
+  .climate-heading {
+    display: none;
+  }
+  .climate-header {
+    height: 50px;
+  }
+  .climate-overview {
+    width: 190px;
+    padding: 13px;
+  }
+  .climate-overview h1 {
+    font-size: 14px;
+    margin: 10px 0 17px;
+  }
+  .climate-main-number {
+    font-size: 34px;
+  }
+  .climate-stats {
+    gap: 14px;
+    padding: 10px 0;
+  }
+  .climate-rule {
+    font-size: 9px;
+  }
+  .climate-overview p {
+    margin: 10px 0;
+    font-size: 9px;
+  }
+  .climate-layers {
+    width: 146px;
+    padding: 12px 7px;
+  }
+  .climate-layers > button {
+    font-size: 10px;
+    padding: 9px 7px;
+  }
+  .climate-timeline-heading > span {
+    font-size: 9px;
+  }
+  .climate-timeline-heading button {
+    font-size: 0;
+  }
+  .climate-source-line {
+    font-size: 7px;
+  }
+  .climate-legend {
+    width: 160px;
+    bottom: 237px;
+    right: 18px;
+  }
+  .climate-location-warning {
+    bottom: 237px;
+    font-size: 8px;
+  }
+  .climate-zone-detail {
+    left: 14px;
+    right: 14px;
+    top: 16px;
+    width: auto;
+    z-index: 600;
+  }
+  .climate-zones {
+    max-height: 70px;
+  }
+  .climate-main-number > span {
+    font-size: 11px;
+  }
+  .climate-timeline {
+    right: 50px;
+  }
+  .climate-logo {
+    font-size: 22px;
+  }
+}
+
+.climate-weeks em {
+  display: block;
+  font-size: 8px;
+  color: #8da9ba;
+  font-style: normal;
+  margin-top: 5px;
+}
+@media (max-width: 1000px) {
+  .climate-overview {
+    padding: 14px;
+  }
+  .climate-overview h1 {
+    margin: 10px 0 17px;
+  }
+  .climate-main-number {
+    font-size: 35px;
+  }
+  .climate-overview p {
+    margin: 9px 0 12px;
+    font-size: 9px;
+  }
+  .climate-stats {
+    padding: 10px 0;
+  }
+  .climate-stats strong {
+    font-size: 20px;
+  }
+  .climate-rule {
+    margin: 9px 0;
+    font-size: 9px;
+  }
+  .climate-zone-toggle {
+    font-size: 9px;
+  }
+  .climate-location-warning {
+    bottom: 270px;
+  }
+  .climate-legend {
+    bottom: 270px;
+  }
+  .climate-zone-detail {
+    top: 70px;
+    right: 205px;
+    max-height: calc(100% - 310px);
+    overflow: auto;
+  }
+  .climate-timeline-heading {
+    margin-bottom: 10px;
+  }
+  .climate-weeks > button {
+    padding: 7px 8px;
+  }
+  .climate-week-bar {
+    margin: 7px 0 5px;
+  }
+}
+@media (max-width: 600px) {
+  .climate-zone-detail {
+    top: 16px;
+    right: 14px;
+    max-height: calc(100% - 280px);
+  }
+  .climate-location-warning {
+    bottom: 255px;
+  }
+  .climate-legend {
+    bottom: 255px;
+  }
+  .climate-rule {
+    display: none;
+  }
+  .climate-overview {
+    width: 185px;
+  }
+  .climate-main-number {
+    font-size: 31px;
+  }
+}
+
+.climate-overview .climate-location-warning {
+  position: static;
+  display: block;
+  margin-top: 10px;
+  padding: 0;
+  color: #ecc69c;
+  background: none;
+  border: none;
+  font-size: 9px;
+  box-shadow: none;
+}
+@media (max-height: 760px) {
+  .climate-overview .climate-rule {
+    display: none;
+  }
+  .climate-overview h1 {
+    margin-bottom: 16px;
+  }
+  .climate-overview .climate-zones {
+    max-height: 90px;
+  }
+  .climate-zone-detail {
+    top: 20px;
+    right: 220px;
+    max-height: calc(100% - 250px);
+    overflow: auto;
+  }
+}
+@media (max-width: 600px) and (max-height: 760px) {
+  .climate-zone-detail {
+    right: 14px;
+    max-height: calc(100% - 270px);
+  }
+}
+
+.climate-overview {
+  max-height: calc(100% - 255px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.climate-criteria {
+  font-size: 9px;
+  color: #b7cbd4;
+  margin: 0 0 12px;
+}
+
+.climate-weeks > button {
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 7px 8px;
+}
+.climate-week-bar {
+  margin: 7px 0 5px;
+}
+.climate-timeline {
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+.climate-timeline-heading {
+  margin-bottom: 10px;
+}
+@media (min-width: 1001px) and (min-height: 761px) {
+  .climate-criteria {
+    display: none;
+  }
+}
+
+.windy-workspace .climate-header {
+  height: 54px;
+  gap: 34px;
+}
+.windy-workspace .climate-logo {
+  font-size: 24px;
+}
+.windy-workspace .climate-logo span {
+  font-size: 9px;
+}
+.windy-workspace .climate-heading {
+  font-size: 11px;
+  color: #b4c9d4;
+}
+.windy-workspace .operational-heat {
+  filter: blur(2px);
+}
+.windy-workspace .leaflet-tile-pane {
+  filter: grayscale(1) brightness(0.9);
+}
+.wind-particles {
+  position: absolute;
+  z-index: 200 !important;
+  pointer-events: none;
+  will-change: transform;
+  contain: paint;
+}
+.wind-stream {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-dasharray: 9 27;
+  opacity: 0.65;
+}
+.wind-flow-group {
+  animation: wind-flow var(--flow-duration, 3s) steps(var(--flow-steps, 54))
+    infinite;
+}
+.wind-paused .wind-flow-group {
+  animation-play-state: paused;
+}
+.windy-wind-key {
+  margin-top: 12px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #a9c6d6;
+}
+.windy-wind-key svg {
+  display: inline;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+@keyframes wind-flow {
+  to {
+    stroke-dashoffset: -144;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wind-flow-group {
+    animation: none;
+  }
+}
+.windy-time-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+.windy-time-controls > div {
+  display: flex;
+  gap: 3px;
+}
+.windy-time-controls button {
+  padding: 5px 9px;
+  border: 1px solid #ffffff28;
+  border-radius: 4px;
+  color: #cfdee8;
+  font-size: 10px;
+}
+.windy-time-controls button[aria-pressed="true"] {
+  background: #9ad2c325;
+  border-color: #9ad2c3;
+  color: #fff;
+}
+.windy-time-controls > span {
+  margin-left: auto;
+  color: #a9c6d6;
+}
+.windy-time-controls input[type="date"] {
+  width: 118px;
+  min-height: 0;
+  padding: 3px 5px;
+  color: #d4e3ed;
+  background: #ffffff08;
+  border: 1px solid #ffffff28;
+  font-size: 10px;
+}
+.windy-timeline:has(button[aria-pressed="true"]) .windy-periods {
+  scroll-behavior: smooth;
+}
+@media (max-width: 500px) {
+  .windy-time-controls {
+    gap: 5px;
+  }
+  .windy-time-controls > span {
+    display: none;
+  }
+}
+.windy-search,
+.windy-summary-controls > button,
+.windy-summary,
+.windy-layers,
+.windy-map-label,
+.windy-legend {
+  position: absolute;
+  z-index: 500;
+  background: #142b3bea;
+  backdrop-filter: none;
+  border: 1px solid #ffffff22;
+  border-radius: 6px;
+  box-shadow: 0 3px 15px #0a243d30;
+}
+.windy-search {
+  top: 17px;
+  left: 20px;
+  width: 275px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  color: #99b5c8;
+}
+.windy-search input {
+  width: 100%;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font:
+    11px "DM Sans",
+    sans-serif;
+  color: #fff;
+}
+.windy-search input::placeholder {
+  color: #9db7c7;
+}
+.windy-search button {
+  display: grid;
+  place-items: center;
+}
+.windy-map-label {
+  top: 17px;
+  left: 315px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #e3edf4;
+}
+.windy-map-label > span:last-child {
+  font-size: 9px;
+  color: #a8c0cf;
+  margin-left: 8px;
+}
+.windy-status-dot {
+  width: 5px;
+  height: 5px;
+  background: #8bd2bb;
+  border-radius: 50%;
+}
+.windy-summary-controls {
+  position: absolute;
+  left: 20px;
+  top: 68px;
+  z-index: 510;
+  display: flex;
+  gap: 6px;
+}
+.windy-summary-controls > button {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  font-size: 10px;
+  color: #e4eef4;
+}
+.windy-summary {
+  top: 110px;
+  left: 20px;
+  width: 238px;
+  max-height: calc(100% - 280px);
+  overflow: auto;
+  padding: 18px;
+  scrollbar-width: thin;
+}
+.windy-summary h1 {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 12px 0 19px;
+}
+.windy-potential {
+  font-size: 41px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+.windy-potential > span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0;
+  font-weight: 400;
+  margin-top: 7px;
+  color: #d1e2ec;
+}
+.windy-summary > p {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #b4c9d5;
+  margin-top: 12px;
+}
+.windy-rule {
+  font-size: 9px;
+  line-height: 1.8;
+  color: #a5bece;
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid #ffffff17;
+  border-bottom: 1px solid #ffffff17;
+}
+.windy-data-coverage {
+  font-size: 9px;
+  color: #a2bdcf;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.windy-data-coverage b {
+  display: block;
+  font-size: 9px;
+  color: #edc18d;
+  font-weight: 400;
+}
+.windy-summary .windy-basis {
+  font-size: 9px;
+  line-height: 1.7;
+  color: #9db9ca;
+}
+.windy-text-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #a5d9d0;
+  margin-top: 13px;
+  text-align: left;
+}
+.windy-method-link {
+  font-size: 8px;
+  line-height: 1.6;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: #8faebe;
+  padding-top: 13px;
+  margin-top: 14px;
+  border-top: 1px solid #ffffff17;
+  width: 100%;
+  text-align: left;
+}
+.windy-summary h3 {
+  font-size: 10px;
+  font-weight: 500;
+  color: #c2d5e0;
+  margin-top: 16px;
+}
+.windy-enso-comparison {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+}
+.windy-enso-comparison > div {
+  text-align: center;
+}
+.windy-enso-comparison span,
+.windy-enso-comparison small {
+  display: block;
+  font-size: 8px;
+  color: #a1bccc;
+}
+.windy-enso-comparison strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 500;
+  margin: 4px 0;
+}
+.windy-zone-list {
+  max-height: 160px;
+  overflow: auto;
+  margin-top: 10px;
+}
+.windy-zone-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  font-size: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid #ffffff16;
+  gap: 10px;
+}
+.windy-zone-list small {
+  display: block;
+  font-size: 8px;
+  color: #8faebf;
+  margin-top: 3px;
+}
+.windy-zone-list strong {
+  white-space: nowrap;
+  font-weight: 500;
+}
+.windy-layers {
+  top: 17px;
+  right: 20px;
+  width: 158px;
+  padding: 14px 9px;
+}
+.windy-layers > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 8px;
+  letter-spacing: 1.3px;
+  color: #a1bbca;
+  padding: 0 7px 11px;
+}
+.windy-layers > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 8px;
+  font-size: 11px;
+  color: #c1d4e0;
+  border-radius: 4px;
+}
+.windy-layers > button.active {
+  background: #ffffff1d;
+  color: #fff;
+}
+.windy-layers label {
+  display: block;
+  font-size: 8px;
+  color: #95b1c3;
+  margin: 13px 8px 2px;
+}
+.windy-layers input {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  accent-color: #7ecbb5;
+}
+.windy-legend {
+  right: 70px;
+  bottom: 235px;
+  width: 230px;
+  padding: 11px 13px;
+}
+.windy-legend > span {
+  font-size: 9px;
+  color: #dce9f2;
+}
+.windy-legend > div {
+  height: 7px;
+  border-radius: 3px;
+  margin: 9px 0 6px;
+  background: linear-gradient(
+    90deg,
+    #324f8b,
+    #2e80a4,
+    #30a689,
+    #8cbd5d,
+    #e8c040,
+    #db6b3d,
+    #a43769
+  );
+}
+.windy-legend.rain > div {
+  background: linear-gradient(
+    90deg,
+    #3c4e84,
+    #2b7da9,
+    #2daba3,
+    #63b760,
+    #dbc243,
+    #e36b37,
+    #aa305d
+  );
+}
+.windy-legend.availability > div {
+  background: linear-gradient(90deg, #dc534c, #eec24e, #30a37e);
+}
+.windy-legend footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: #aac0cf;
+}
+.windy-grid-caption {
+  position: absolute;
+  z-index: 500;
+  bottom: 214px;
+  right: 73px;
+  font-size: 8px;
+  color: #e8f1f9;
+  text-shadow: 0 1px 4px #18354f;
+  background: #14334d75;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+.windy-timeline {
+  position: absolute;
+  z-index: 500;
+  left: 20px;
+  right: 70px;
+  bottom: 28px;
+  padding: 12px 14px 9px;
+  border: 1px solid #ffffff20;
+  background: #122a3bef;
+  backdrop-filter: none;
+  border-radius: 6px;
+  box-shadow: 0 4px 18px #0a203d35;
+}
+.windy-periods {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 6px;
+}
+.windy-periods > button {
+  flex: 1;
+  min-width: 68px;
+  padding: 7px 8px;
+  text-align: left;
+  border: 1px solid #ffffff14;
+  border-radius: 4px;
+  font:
+    10px/1.2 "DM Sans",
+    sans-serif;
+  color: #d4e3ed;
+}
+.windy-periods > button:first-child {
+  min-width: 99px;
+}
+.windy-periods > button.active {
+  border-color: #9ad2c3;
+  background: #b4ecdc12;
+}
+.windy-periods i {
+  display: block;
+  background: #ffffff17;
+  border-radius: 2px;
+  height: 3px;
+  margin: 9px 0 6px;
+  overflow: hidden;
+}
+.windy-periods b {
+  display: block;
+  background: #9ad3b5;
+  height: 100%;
+}
+.windy-periods small {
+  font-size: 8px;
+  color: #8fb3c6;
+}
+.windy-periods .windy-weekday {
+  display: block;
+  margin-top: 3px;
+}
+.windy-timeline-source {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #ffffff15;
+  padding-top: 8px;
+  font-size: 8px;
+  color: #8caebf;
+}
+.windy-error {
+  position: absolute;
+  z-index: 800;
+  left: 32%;
+  top: 70px;
+  background: #663d32;
+  color: #ffe5d0;
+  padding: 15px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.windy-error button {
+  margin-left: 15px;
+  text-decoration: underline;
+}
+.climate-data-view .climate-header {
+  gap: 25px;
+}
+.climate-data-view .climate-header > .data-back {
+  margin-left: 0;
+  padding: 0;
+  border: none;
+}
+.climate-data-view .climate-header nav {
+  display: flex;
+  gap: 5px;
+  height: 100%;
+  margin-left: auto;
+}
+.climate-data-view nav button {
+  font-size: 12px;
+  padding: 0 18px;
+  color: #95b1c3;
+  border-bottom: 2px solid transparent;
+}
+.climate-data-view nav button.active {
+  border-color: #83cbb6;
+  color: #fff;
+  background: #ffffff0a;
+}
+.climate-data-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px max(24px, calc((100vw - 1280px) / 2));
+  scrollbar-width: thin;
+  background: #142733;
+  color: #d7e5ee;
+}
+.data-title {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: 10px 0 28px;
+}
+.data-title > svg {
+  color: #9dcbbf;
+  margin-top: 5px;
+}
+.data-title h1 {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+.data-title p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #90afc0;
+  max-width: 800px;
+}
+.data-notice {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 12px 15px;
+  background: #25494d;
+  border: 1px solid #5b8f85;
+  border-radius: 5px;
+  font-size: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.data-notice.error {
+  background: #59342e;
+  border-color: #b87865;
+  color: #ffe1d4;
+}
+.climate-source-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.climate-source-cards article,
+.data-enso,
+.data-method-note,
+.climate-rule-form {
+  padding: 22px;
+  border: 1px solid #ffffff18;
+  background: #ffffff04;
+  border-radius: 7px;
+}
+.climate-source-cards small {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #8daebb;
+}
+.climate-source-cards h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 12px 0;
+}
+.climate-source-cards p,
+.data-enso p,
+.data-method-note p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #9bb7c7;
+  margin-bottom: 15px;
+}
+.climate-source-cards article {
+  display: flex;
+  flex-direction: column;
+}
+.climate-source-cards article p {
+  flex: 1;
+}
+.climate-source-cards button,
+.data-enso button,
+.data-equipment-actions button,
+.data-equipment-actions > label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #c7e8df;
+  border: 1px solid #7aa59660;
+  border-radius: 4px;
+  padding: 9px 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.climate-data-view button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.data-enso {
+  margin-bottom: 28px;
+}
+.data-enso h2,
+.data-table-section h2,
+.data-method-note h2 {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.data-enso button {
+  display: inline-flex;
+  margin-right: 18px;
+}
+.climate-data-content a {
+  font-size: 11px;
+  color: #91c6d4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.data-table-section {
+  margin: 28px 0;
+}
+.data-table-scroll {
+  overflow: auto;
+  border: 1px solid #ffffff18;
+  border-radius: 6px;
+}
+.climate-data-view table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 650px;
+  font-size: 11px;
+}
+.climate-data-view th {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #92b0c2;
+  font-weight: 500;
+  background: #ffffff05;
+  text-align: left;
+  padding: 14px;
+}
+.climate-data-view td {
+  padding: 14px;
+  border-top: 1px solid #ffffff12;
+  color: #cadae5;
+  font-size: 11px;
+}
+.climate-data-view td small {
+  display: block;
+  font-size: 9px;
+  color: #86a7b9;
+  margin-top: 5px;
+}
+.climate-data-view td button {
+  color: #99d2c6;
+  font-size: 10px;
+  padding: 5px;
+}
+.climate-data-view td .data-error-text {
+  color: #f1ad8f;
+}
+.data-method-note {
+  margin: 24px 0 28px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #9bb7c7;
+}
+.climate-rule-form {
+  max-width: 850px;
+}
+.climate-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px 22px;
+}
+.climate-rule-grid label,
+.data-edit label {
+  font-size: 11px;
+  color: #aec6d4;
+  display: block;
+}
+.climate-rule-grid label > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.climate-rule-grid label > div > span {
+  font-size: 10px;
+  color: #7e9eaf;
+}
+.climate-data-view input,
+.climate-data-view select {
+  display: block;
+  min-width: 0;
+  background: #0e2230;
+  border: 1px solid #ffffff25;
+  border-radius: 4px;
+  color: #edf4f8;
+  padding: 10px 12px;
+  font:
+    12px "DM Sans",
+    sans-serif;
+  outline: none;
+}
+.climate-data-view input:focus {
+  border-color: #71b7b0;
+}
+.climate-rule-grid input {
+  width: 100%;
+}
+.climate-rule-grid input[type="date"] {
+  margin-top: 10px;
+  color-scheme: dark;
+}
+.data-primary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  background: #427a71;
+  color: #effff8;
+  border: 1px solid #86bca6;
+  border-radius: 5px;
+  padding: 11px 17px;
+  font-size: 12px;
+  margin-top: 26px;
+}
+.data-equipment-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.data-equipment-actions > input {
+  width: 280px;
+}
+.data-equipment-actions > label {
+  cursor: pointer;
+}
+.data-equipment-actions > label > input {
+  display: none;
+}
+.data-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: #0a1d2b99;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(3px);
+}
+.data-edit {
+  position: relative;
+  background: #172f40;
+  border: 1px solid #ffffff30;
+  border-radius: 7px;
+  padding: 28px;
+  width: 350px;
+  max-width: 90vw;
+  box-shadow: 0 6px 40px #071d3899;
+}
+.data-edit h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+.data-edit p {
+  color: #94b0c1;
+  font-size: 11px;
+  margin-bottom: 20px;
+}
+.data-edit label {
+  margin-top: 15px;
+}
+.data-edit input,
+.data-edit select {
+  width: 100%;
+  margin-top: 8px;
+}
+@media (max-width: 1050px) {
+  .climate-source-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .windy-map-label > span:last-child {
+    display: none;
+  }
+  .windy-summary {
+    width: 224px;
+  }
+  .windy-timeline-source {
+    font-size: 7px;
+  }
+  .windy-workspace .climate-logo span {
+    display: none;
+  }
+}
+@media (max-width: 750px) {
+  .windy-workspace .climate-header {
+    padding: 0 14px;
+    gap: 18px;
+  }
+  .windy-workspace .climate-heading {
+    font-size: 10px;
+  }
+  .windy-search {
+    left: 14px;
+    width: 235px;
+    padding: 9px 10px;
+  }
+  .windy-map-label {
+    display: none;
+  }
+  .windy-summary-controls {
+    left: 14px;
+    top: 61px;
+  }
+  .windy-summary {
+    left: 14px;
+    top: 103px;
+    width: 215px;
+    padding: 15px;
+    max-height: calc(100% - 270px);
+  }
+  .windy-summary h1 {
+    font-size: 15px;
+  }
+  .windy-potential {
+    font-size: 34px;
+  }
+  .windy-layers {
+    right: 14px;
+    width: 145px;
+    padding: 12px 7px;
+  }
+  .windy-timeline {
+    left: 14px;
+    right: 55px;
+    padding: 10px 10px 8px;
+  }
+  .windy-timeline-source {
+    flex-direction: column;
+    gap: 5px;
+    font-size: 7px;
+  }
+  .windy-legend {
+    right: 60px;
+    bottom: 235px;
+    width: 195px;
+  }
+  .windy-grid-caption {
+    right: 60px;
+    bottom: 214px;
+    font-size: 7px;
+    max-width: 230px;
+  }
+  .climate-rule-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .climate-data-view .climate-header {
+    gap: 16px;
+    padding: 0 14px;
+  }
+  .climate-data-view .climate-heading {
+    font-size: 12px;
+  }
+  .climate-data-view nav button {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+  .climate-data-content {
+    padding: 22px 18px;
+  }
+  .data-title h1 {
+    font-size: 21px;
+  }
+  .data-title p {
+    font-size: 11px;
+  }
+}
+@media (max-width: 500px) {
+  .windy-workspace .climate-heading {
+    display: none;
+  }
+  .windy-workspace .climate-header {
+    height: 50px;
+  }
+  .windy-search {
+    width: 205px;
+    left: 12px;
+    top: 12px;
+  }
+  .windy-summary-controls {
+    top: 56px;
+    left: 12px;
+  }
+  .windy-layers {
+    top: 12px;
+    right: 12px;
+    width: 135px;
+    padding: 12px 6px;
+  }
+  .windy-layers > button {
+    font-size: 10px;
+    padding: 9px 6px;
+  }
+  .windy-layers label {
+    display: none;
+  }
+  .windy-summary {
+    left: 12px;
+    top: 98px;
+    width: 204px;
+    padding: 14px;
+    max-height: calc(100% - 275px);
+  }
+  .windy-summary h1 {
+    font-size: 14px;
+    margin: 10px 0 15px;
+  }
+  .windy-potential {
+    font-size: 32px;
+  }
+  .windy-rule {
+    font-size: 8px;
+  }
+  .windy-summary > p {
+    font-size: 9px;
+  }
+  .windy-legend {
+    right: 50px;
+    width: 168px;
+    bottom: 235px;
+  }
+  .windy-grid-caption {
+    right: 50px;
+    bottom: 214px;
+  }
+  .windy-timeline {
+    left: 12px;
+    right: 48px;
+  }
+  .climate-source-cards {
+    grid-template-columns: 1fr;
+  }
+  .climate-rule-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 14px;
+  }
+  .climate-data-view .climate-heading {
+    display: none;
+  }
+  .climate-data-view nav button {
+    padding: 0 9px;
+  }
+  .data-equipment-actions > input {
+    width: 100%;
+  }
+  .data-equipment-actions button {
+    flex: 1;
+  }
+}
+
+.windy-search input {
+  padding: 0;
+  min-height: 0;
+  height: 17px;
+  line-height: 17px;
+  box-shadow: none;
+}
+.windy-search input:focus {
+  outline: none;
+}
+.windy-summary h1 {
+  letter-spacing: -0.2px;
+}
+
+.climate-app {
+  color-scheme: dark;
+}
+.windy-summary {
+  padding: 15px;
+}
+.windy-summary h1 {
+  margin-bottom: 15px;
+}
+.windy-potential {
+  font-size: 36px;
+}
+.windy-summary > p {
+  margin-top: 10px;
+}
+.windy-rule {
+  padding: 10px 0;
+  line-height: 1.6;
+  margin-top: 10px;
+}
+.windy-method-link {
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.windy-text-button {
+  margin-top: 10px;
+}
+
+.windy-layers .windy-animation {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+.windy-layers .windy-animation input {
+  display: inline;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+}
+
+/* Keep the map in its own viewport and the controls in a scrollable rail. */
+.windy-workspace .climate-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.climate-map-area {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  grid-column: 1;
+  grid-row: 1;
+}
+.climate-sidebar {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #142631;
+  border-left: 1px solid #ffffff18;
+  scrollbar-width: thin;
+}
+.climate-sidebar .windy-summary-controls,
+.climate-sidebar .windy-summary,
+.climate-sidebar .windy-layers,
+.climate-sidebar .windy-legend,
+.climate-sidebar .windy-grid-caption {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  flex-shrink: 0;
+}
+.windy-map-options {
+  margin: 12px 8px 0;
+  font-size: 11px;
+  color: #a7c5d1;
+}
+.windy-map-options summary {
+  cursor: pointer;
+}
+.windy-location {
+  margin: -8px 0 18px;
+}
+.windy-opportunities {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+.windy-opportunities button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  background: #ffffff0a;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.windy-opportunities button span {
+  color: #91cdbb;
+}
+.windy-summary .windy-equipment-summary {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.windy-equipment-summary strong {
+  color: #eaf1f4;
+  font-weight: 600;
+}
+.windy-percent {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #83cbb61a;
+  color: #a5dfcb;
+  font-weight: 600;
+}
+.windy-rain-explanation {
+  margin: 9px 0 0;
+  color: #a7c5d1;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.windy-view-windows {
+  width: 100%;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: 5px;
+  background: #427a71;
+  border: 1px solid #86bca6;
+  color: #effff8;
+  font-size: 12px;
+}
+.possible-windows-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  background: #061722b8;
+  padding: 24px;
+}
+.possible-windows-dialog {
+  position: relative;
+  width: min(1080px, 100%);
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  background: #142b39;
+  color: #eaf1f4;
+  border: 1px solid #ffffff26;
+  border-radius: 9px;
+  padding: 25px;
+  box-shadow: 0 10px 50px #0006;
+}
+.possible-windows-dialog h2 {
+  margin: 0 30px 10px 0;
+  font-size: 22px;
+}
+.possible-windows-dialog > p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b0c7d5;
+  margin: 3px 0;
+}
+.possible-windows-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  margin: 16px 0;
+  background: #0c2230;
+  border: 1px solid #ffffff24;
+  border-radius: 5px;
+}
+.possible-windows-search input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: #eaf1f4;
+  outline: none;
+  font: inherit;
+}
+.possible-windows-table {
+  min-height: 100px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.possible-windows-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 660px;
+}
+.possible-windows-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: #a5c4d4;
+  position: sticky;
+  top: 0;
+  background: #183444;
+}
+.possible-windows-table th,
+.possible-windows-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #ffffff16;
+  vertical-align: top;
+}
+.possible-windows-table td:first-child {
+  white-space: nowrap;
+}
+.possible-windows-table small {
+  display: block;
+  margin-top: 5px;
+  color: #9dbbca;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.possible-windows-table button,
+.possible-windows-dialog footer button {
+  padding: 7px 9px;
+  border: 1px solid #8ccbb760;
+  border-radius: 4px;
+  color: #b8e5d6;
+  font-size: 11px;
+}
+.possible-windows-dialog button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.possible-windows-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 15px;
+  font-size: 11px;
+  color: #a4bece;
+}
+.possible-windows-dialog footer > div {
+  display: flex;
+  gap: 8px;
+}
+.possible-windows-empty {
+  padding: 24px 0;
+  font-size: 13px;
+  color: #c1d6df;
+}
+@media (max-width: 750px) {
+  .possible-windows-backdrop {
+    padding: 12px;
+  }
+  .possible-windows-dialog {
+    padding: 20px 14px;
+  }
+  .possible-windows-dialog footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+.climate-sidebar .windy-summary-controls {
+  width: auto;
+}
+.climate-sidebar .windy-summary {
+  overflow: visible;
+}
+.climate-sidebar .windy-layers {
+  padding: 14px;
+}
+.climate-sidebar .windy-grid-caption {
+  font-size: 9px;
+}
+.windy-workspace .windy-timeline {
+  position: relative;
+  inset: auto;
+  grid-column: 1;
+  grid-row: 2;
+  border-radius: 0;
+  min-width: 0;
+}
+@media (max-width: 750px) {
+  .windy-workspace .climate-stage {
+    overflow: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(420px, 60dvh) auto auto;
+  }
+  .climate-sidebar {
+    grid-column: 1;
+    grid-row: 3;
+    overflow: visible;
+  }
+  .climate-sidebar .windy-layers label {
+    display: block;
+  }
+}

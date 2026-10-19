@@ -9,4 +9,8 @@ data/research/
 data/long-range/
 data/*.tmp
 data/state.lock
+data/*.log
+data/*.png
+docs/*preview*.png
+docs/*preview*.jpg
 *.tsbuildinfo

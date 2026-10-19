@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkStatus {
+  PENDIENTE
+  PROGRAMADO
+  TERMINADO
+}
+
+model AppState {
+  id        String   @id
+  payload   Json
+  updatedAt DateTime @updatedAt
+}
+
+model Campaign {
+  id          String            @id @default(cuid())
+  name        String
+  deadline    DateTime
+  crews       Int               @default(2)
+  jobsPerCrew Int               @default(2)
+  pivots      Pivot[]
+  rules       OperationalRules?
+}
+
+model Field {
+  id       String  @id @default(cuid())
+  name     String
+  soilType String?
+  pivots   Pivot[]
+}
+
+model GeographicCluster {
+  id       String  @id @default(cuid())
+  name     String
+  radiusKm Float
+  pivots   Pivot[]
+}
+
+model Pivot {
+  id            String              @id @default(cuid())
+  name          String
+  latitude      Float
+  longitude     Float
+  status        WorkStatus          @default(PENDIENTE)
+  scheduledDate DateTime?
+  crew          Int?
+  campaignId    String
+  campaign      Campaign            @relation(fields: [campaignId], references: [id])
+  fieldId       String?
+  field         Field?              @relation(fields: [fieldId], references: [id])
+  clusterId     String?
+  cluster       GeographicCluster?  @relation(fields: [clusterId], references: [id])
+  roads         RoadCondition[]
+  forecasts     WeatherForecast[]
+  windows       OperationalWindow[]
+
+  @@index([latitude, longitude])
+}
+
+model OperationalRules {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  parameters Json
+}
+
+model RoadCondition {
+  id         String   @id @default(cuid())
+  pivotId    String
+  pivot      Pivot    @relation(fields: [pivotId], references: [id])
+  condition  String
+  comment    String?
+  recordedAt DateTime @default(now())
+  recordedBy String?
+}
+
+model WeatherForecast {
+  id       String   @id @default(cuid())
+  pivotId  String
+  pivot    Pivot    @relation(fields: [pivotId], references: [id])
+  model    String
+  issuedAt DateTime
+  hours    Json
+}
+
+model ForecastSnapshot {
+  id        String   @id @default(cuid())
+  pivotRef  String
+  fetchedAt DateTime
+  payload   Json
+
+  @@index([pivotRef, fetchedAt])
+}
+
+model OperationalWindow {
+  id           String   @id @default(cuid())
+  pivotId      String
+  pivot        Pivot    @relation(fields: [pivotId], references: [id])
+  start        DateTime
+  end          DateTime
+  probability  Float
+  confidence   Float
+  rulesVersion Json
+}
+
+model ForecastObservation {
+  id           String   @id @default(cuid())
+  pivotRef     String
+  model        String
+  issuedAt     DateTime
+  validAt      DateTime
+  observedWind Float?
+  observedRain Float?
+  forecastWind Float?
+  forecastRain Float?
+  region       String
+
+  @@index([model, region, validAt])
+}
