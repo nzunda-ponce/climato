@@ -29,7 +29,7 @@ function status() {
   };
 }
 export async function GET() {
-  if (isReportServer())
+  if (isReportServer() || process.env.DATABASE_URL?.trim())
     try {
       return NextResponse.json(await readDataJobStatus());
     } catch {

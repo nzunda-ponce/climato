@@ -37,7 +37,7 @@ export async function publishPlanningReport(force = false): Promise<boolean> {
       ? [Date.parse(z.sources.seasonalAt) + 36 * 3600000]
       : []),
   ]);
-  const validUntil = Math.min(Date.now() + 3 * 3600000, ...expiry);
+  const validUntil = Math.min(Date.now() + 13 * 3600000, ...expiry);
   await db.transaction(async (tx) => {
     const existing = await tx.get("published", "planning");
     if (existing) {
@@ -96,7 +96,7 @@ export async function readPublishedPlanningReport(
         stale:
           localDate(now) !== value.report.today ||
           now.getTime() >
-            (value.validUntil ?? Date.parse(value.at) + 3 * 3600000),
+            (value.validUntil ?? Date.parse(value.at) + 13 * 3600000),
       },
     };
   });

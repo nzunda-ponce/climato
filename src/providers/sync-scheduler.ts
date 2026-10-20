@@ -6,6 +6,9 @@ const shared = globalThis as unknown as {
   climatoSyncTimer?: ReturnType<typeof setInterval>;
 };
 export function startAutoSyncScheduler() {
+  // The shared cloud database is refreshed by GitHub Actions twice daily.
+  // Opening another local installation must not start additional API imports.
+  if (process.env.DATABASE_URL?.trim()) return;
   if (shared.climatoSyncTimer) return;
   const tick = async () => {
     try {

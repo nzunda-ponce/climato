@@ -153,7 +153,7 @@ test("readers keep the last complete publication, detect pending edits and flag 
       "Publicación más reciente",
     );
     assert.equal(
-      (await readPublishedPlanningReport(new Date(Date.now() + 4 * 3600000)))!
+      (await readPublishedPlanningReport(new Date(Date.now() + 14 * 3600000)))!
         .publication!.stale,
       true,
     );

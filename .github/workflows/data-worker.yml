@@ -8,9 +8,8 @@ on:
         options: [refresh, bootstrap, publish]
         default: refresh
   schedule:
-    # UTC: hourly short-term refresh; historical preparation is a daily bounded pass.
-    - cron: '17 * * * *'
-    - cron: '43 5 * * *'
+    # Argentina (UTC-3): 07:17 and 19:17. Historical imports are manual.
+    - cron: '17 10,22 * * *'
 permissions:
   contents: read
 concurrency:
@@ -39,12 +38,9 @@ jobs:
       - name: Ejecutar proceso y publicar resultados
         env:
           MANUAL_MODE: ${{ inputs.mode }}
-          SCHEDULE: ${{ github.event.schedule }}
         run: |
           if [ -n "$MANUAL_MODE" ]; then
             job_mode="$MANUAL_MODE"
-          elif [ "$SCHEDULE" = '43 5 * * *' ]; then
-            job_mode=bootstrap
           else
             job_mode=refresh
           fi

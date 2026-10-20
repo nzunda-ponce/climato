@@ -12,14 +12,14 @@ Los tres comandos usan la misma `DATABASE_URL` de Neon y rechazan una conexión 
 
 Si Open-Meteo responde HTTP 429, se detiene la pasada y se guarda una pausa compartida de al menos una hora. Las otras tareas también respetan esa pausa, sin extenderla cada vez que consultan el estado. No se cambian IPs ni se crean datos para sortear el límite del proveedor. La próxima ejecución intentará únicamente los pendientes.
 
-La publicación es atómica y usa los datos y la revisión de una misma lectura consistente. Las importaciones pueden seguir avanzando mientras se prepara el informe: eso se indica como cambios pendientes y no impide publicar el avance disponible. Un proceso lento no reemplaza una publicación que ya utiliza datos más recientes. Si un proceso falla, permanece la última publicación completa. Se muestra una advertencia cuando cambian los datos sin publicar, pasa el día, transcurren tres horas o vence una fuente meteorológica utilizada. Una publicación puede tener cobertura parcial: el informe muestra esa cobertura y no la convierte en una campaña completa.
+La publicación es atómica y usa los datos y la revisión de una misma lectura consistente. Las importaciones pueden seguir avanzando mientras se prepara el informe: eso se indica como cambios pendientes y no impide publicar el avance disponible. Un proceso lento no reemplaza una publicación que ya utiliza datos más recientes. Si un proceso falla, permanece la última publicación completa. Se muestra una advertencia cuando cambian los datos sin publicar, pasa el día, transcurren trece horas o vence una fuente meteorológica utilizada. Una publicación puede tener cobertura parcial: el informe muestra esa cobertura y no la convierte en una campaña completa.
 
 ## Activar la tarea programada en GitHub Actions
 
 Se preparó `.github/workflows/data-worker.yml`:
 
-- Pronóstico y verificación cada hora, al minuto 17 UTC.
-- Una pasada histórica diaria a las 05:43 UTC (02:43 de Argentina).
+- Pronóstico y verificación dos veces al día: 07:17 y 19:17 de Argentina (10:17 y 22:17 UTC). Cada pasada guarda los resultados en Neon y publica el informe. Son dos ejecuciones, no dos solicitudes HTTP: se consultan múltiples ubicaciones y fuentes, agrupadas en lotes.
+- La carga histórica completa queda manual (`bootstrap`) para evitar consultas automáticas adicionales.
 - Ejecución manual de `bootstrap`, `refresh` o `publish`.
 - Una sola ejecución simultánea; no se cancela un lote anterior por abrir el informe.
 - Usa un runner Linux estándar. No sube datos ni credenciales como archivos o artefactos públicos.
@@ -42,6 +42,6 @@ La conexión/plan de alojamiento y los secretos son configuración externa. Ning
 
 ## Instalación local y transición
 
-La instalación local existente sigue funcionando con `npm run dev` y conserva sus datos. La página ya no hace POST para iniciar importaciones: en modo local el servidor mantiene su propio coordinador.
+La instalación local existente sigue funcionando con `npm run dev` y conserva sus datos. Si usa `DATABASE_URL`, no inicia un coordinador adicional: consulta el estado compartido de GitHub Actions. Las instalaciones con SQLite conservan su coordinador local. Las importaciones manuales siguen disponibles donde corresponde, fuera del informe público.
 
 Cuando la tarea remota esté comprobada, establecer `CLIMATO_ROLE=web` también en la PC y reiniciar una vez. Así tanto la PC como el enlace compartido consultan lo mismo y ninguna de las dos ejecuta las descargas. El cálculo y la carga inicial seguirán fuera de la web, aunque la PC se apague.
