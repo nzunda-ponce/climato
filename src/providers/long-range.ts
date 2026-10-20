@@ -312,7 +312,7 @@ export async function loadSeasonal(
         rain = (rains as number[]).reduce((s, v) => s + v, 0),
         previousRain = (before as number[]).reduce((s, v) => s + v, 0),
         prediction =
-          rain > r.rain || previousRain >= r.rain24Limit
+          previousRain >= r.rain24Limit
             ? { probability: 0, slots: 0 }
             : model?.(date.slice(5, 7), wind, rain, previousRain);
       if (prediction) samples.push({ ...prediction, wind, rain });
@@ -348,7 +348,7 @@ export async function loadSeasonal(
     days,
     years: history?.years ?? [],
     method:
-      "Ensemble dinámico EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; viento y lluvia del pronóstico, ventanas horarias históricas de viento y lluvia. Experimental, sin calibración contra hindcasts SEAS5.",
+      "EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; horas continuas con viento apto y lluvia limitada al ensayo, más lluvia del día anterior. La lluvia diaria pronosticada informa los análogos y no descarta por sí sola el día. Experimental, sin calibración contra hindcasts.",
     errors: model
       ? []
       : ["Faltan al menos 30 años de datos compatibles para estimar ventanas."],

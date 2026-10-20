@@ -46,7 +46,7 @@ test("returns an actual continuous hourly window, not a fabricated seasonal time
     "stale",
   );
 });
-test("daily and prior-day rainfall determine the window independently of weekly accumulation", () => {
+test("rain outside the trial does not veto a window; prior-day rain still limits access", () => {
   const f = forecast([
     ...day("2026-10-16"),
     ...day("2026-10-17"),
@@ -64,7 +64,7 @@ test("daily and prior-day rainfall determine the window independently of weekly 
   const wetDay = forecast([...day("2026-10-16"), ...day("2026-10-17", 1)]);
   assert.equal(
     hourlyWindowDetail(wetDay, defaultRules, "2026-10-17", now).status,
-    "unconfirmed",
+    "available",
   );
 });
 

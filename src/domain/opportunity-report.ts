@@ -243,7 +243,7 @@ export function buildOpportunityReport(state: ReportState, now = new Date()) {
         .filter((d) => d.status === "review")
         .sort(
           (a, b) =>
-            b.probability! - a.probability! || a.date.localeCompare(b.date),
+            a.date.localeCompare(b.date) || b.probability! - a.probability!,
         )[0] ?? null;
     const weekly = [];
     for (let d = start; d <= deadline; d = addDays(d, 7)) {
@@ -290,7 +290,7 @@ export function buildOpportunityReport(state: ReportState, now = new Date()) {
       );
     if (daily.some((d) => d.source === "pronóstico" && !d.supported))
       warnings.push(
-        "En algunas fechas faltan modelos o miembros: el porcentaje tiene respaldo limitado.",
+        "En algunas fechas faltan pronósticos para comparar; hace falta otra actualización.",
       );
     return {
       key: zone.key,

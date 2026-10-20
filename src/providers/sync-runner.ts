@@ -25,9 +25,15 @@ export function createSyncRunner(
     retryAt: 0,
   };
   let pending: Promise<void> | undefined;
+  let invalidated = false;
+  function invalidate() {
+    invalidated = true;
+    status.retryAt = 0;
+  }
   function start() {
     if (pending) return pending;
     if (now() < status.retryAt) return Promise.resolve();
+    invalidated = false;
     Object.assign(status, {
       running: true,
       message: "Preparando carga automática",
@@ -40,6 +46,7 @@ export function createSyncRunner(
         const tasks = await plan();
         status.total = tasks.length;
         for (const task of tasks) {
+          if (invalidated) break;
           status.message = task.label;
           try {
             await task.run();
@@ -56,15 +63,18 @@ export function createSyncRunner(
         );
       } finally {
         status.running = false;
-        status.message = status.errors.length
-          ? "Carga parcial. Reintentaremos automáticamente en 5 minutos."
-          : "Datos actualizados";
-        status.retryAt =
-          now() + (status.errors.length ? 5 * 60000 : 60 * 60000);
+        status.message = invalidated
+          ? "Recalculando con las nuevas reglas"
+          : status.errors.length
+            ? "Carga parcial. Reintentaremos automáticamente en 5 minutos."
+            : "Datos actualizados";
+        status.retryAt = invalidated
+          ? 0
+          : now() + (status.errors.length ? 5 * 60000 : 60 * 60000);
         pending = undefined;
       }
     })();
     return pending;
   }
-  return { status, start };
+  return { status, start, invalidate };
 }

@@ -11,12 +11,12 @@ import {
 import { simulateCampaign } from "@/domain/simulation";
 import { climatePotential } from "@/domain/climatic";
 import { trainCalibration, cellKey } from "@/domain/evidence";
-import { recalculateClimate } from "@/providers/recalculate-climate";
+import { autoSync } from "@/providers/auto-sync";
+import { operationalSync } from "@/providers/operational-sync";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    await recalculateClimate();
     const state = await readState();
     if (new URL(request.url).searchParams.get("mode") === "climate") {
       const plans: PivotPlan[] = state.pivots.map((pivot) => ({
@@ -145,7 +145,10 @@ export async function POST(req: Request) {
       await mutateState((s) => {
         s.rules = rules;
       });
-      await recalculateClimate();
+      autoSync.invalidate();
+      operationalSync.invalidate();
+      void operationalSync.start();
+      void autoSync.start();
     } else if (body.action === "pivot") {
       const patch = z
         .object({

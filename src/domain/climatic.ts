@@ -135,7 +135,15 @@ export function climatePotential(
       lat: climate?.lat ?? group[0].pivot.lat,
       lon: climate?.lon ?? group[0].pivot.lon,
       name: [
-        ...new Set(group.map((p) => p.pivot.province ?? p.pivot.field)),
+        ...new Set(
+          group.map(
+            (p) =>
+              p.pivot.region ||
+              p.pivot.field ||
+              p.pivot.province ||
+              `Zona ${key}`,
+          ),
+        ),
       ].join(" / "),
       pending: group.length,
       years: climate?.years ?? [],

@@ -90,6 +90,7 @@ export interface PossibleWindow {
   date: string;
   expectedWindows: number;
   probability: number;
+  source?: ClimateDay["source"];
 }
 
 export function listPossibleWindows(
@@ -116,6 +117,7 @@ export function listPossibleWindows(
                 date: day.date,
                 expectedWindows,
                 probability: day.probability! * 100,
+                source: day.source,
               },
             ]
           : [];
@@ -127,4 +129,54 @@ export function listPossibleWindows(
         b.probability - a.probability ||
         a.equipment.localeCompare(b.equipment),
     );
+}
+
+// One calendar date per weather zone; adding neighboring equipment cannot
+// create extra days. The complete period is needed to show a period total.
+export function workDaySummary(
+  zones: ClimateZone[],
+  start: string,
+  end: string,
+) {
+  const totalDays = Math.max(
+    0,
+    Math.round(
+      (Date.parse(end + "T00:00Z") - Date.parse(start + "T00:00Z")) / 86400000,
+    ) + 1,
+  );
+  const complete = zones.flatMap((zone) => {
+    const days = zone.days.filter((d) => d.date >= start && d.date <= end);
+    if (
+      !totalDays ||
+      new Set(days.map((d) => d.date)).size !== totalDays ||
+      days.some((d) => d.probability === null)
+    )
+      return [];
+    return [{ expected: days.reduce((s, d) => s + d.probability!, 0) }];
+  });
+  return {
+    expectedDays:
+      zones.length && complete.length === zones.length
+        ? complete.reduce((s, z) => s + z.expected, 0) / zones.length
+        : null,
+    coveredZones: complete.length,
+    totalZones: zones.length,
+    totalDays,
+  };
+}
+
+export function workDayLabel(probability: number | null, tentative = false) {
+  if (probability === null) return "Faltan datos";
+  if (tentative) return "Volver a revisar más cerca";
+  return probability >= 0.7
+    ? "Buen día para evaluar"
+    : probability >= 0.4
+      ? "Puede servir; falta confirmar"
+      : "Pocas chances por ahora";
+}
+
+export function estimatedDaysText(value: number | null) {
+  if (value === null) return "—";
+  if (value > 0 && value < 1) return "<1";
+  return String(Math.round(value));
 }

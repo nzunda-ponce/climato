@@ -6,7 +6,7 @@ import {
   RoadRisk,
   Pivot,
 } from "./types";
-import { dayRainEligible } from "./weather-rules";
+import { previousRainEligible, windowRainEligible } from "./weather-rules";
 export function calculateOperationalWindows(
   forecast: WeatherForecast,
   rules: Rules,
@@ -20,8 +20,7 @@ export function calculateOperationalWindows(
   const result: Window[] = [];
   for (const date of dates) {
     const members = forecast.models.map((m) => {
-      const eligible = dayRainEligible(
-        m.hours.filter((h) => h.time.startsWith(date)),
+      const eligible = previousRainEligible(
         m.hours.filter((h) => h.time.startsWith(addDays(date, -1))),
         rules,
       );
@@ -67,7 +66,16 @@ export function calculateOperationalWindows(
         const mask = ((1 << (end - start)) - 1) << start;
         const available = members.filter((m) => (m.available & mask) === mask);
         if (!available.length) continue;
-        const favorable = available.filter((m) => (m.valid & mask) === mask);
+        const dry = (m: (typeof members)[number]) =>
+          windowRainEligible(
+            Array.from({ length: end - start }, (_, i) =>
+              m.hours.get(start + i)!,
+            ),
+            rules,
+          ) === true;
+        const favorable = available.filter(
+          (m) => (m.valid & mask) === mask && dry(m),
+        );
         if (!favorable.length) continue;
         const families = [...new Set(available.map((m) => m.family))];
         const fractions = families.map(
@@ -88,7 +96,8 @@ export function calculateOperationalWindows(
               const group = weatherMembers.filter((m) => m.family === f);
               return (
                 s +
-                group.filter((m) => (m.weatherValid & mask) === mask).length /
+                group.filter((m) => (m.weatherValid & mask) === mask && dry(m))
+                  .length /
                   group.length
               );
             }, 0) / weatherFamilies.length
@@ -130,7 +139,14 @@ export function calculateOperationalWindows(
           confidence,
           wind: Math.max(...favorableHours.map((h) => h.wind!)),
           gust: Math.max(...favorableHours.map((h) => h.gust!)),
-          rain: Math.max(...favorableHours.map((h) => h.rain!)),
+          rain: Math.max(
+            ...favorable.map((m) =>
+              Array.from(
+                { length: end - start },
+                (_, i) => m.hours.get(start + i)!.rain!,
+              ).reduce((s, v) => s + v, 0),
+            ),
+          ),
           members: available.length,
           families: families.length,
           basis: isEnsemble ? "ensemble" : "model-agreement",

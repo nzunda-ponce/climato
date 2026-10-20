@@ -91,3 +91,39 @@ test("map import failure is visible and does not leave the job stuck", async () 
   assert.deepEqual(runner.status.errors, ["Mapa privado"]);
   assert.match(runner.status.message, /Reintentaremos/);
 });
+
+test("changing rules cancels remaining stale tasks and allows recalculation without waiting an hour", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  let calls = 0,
+    staleTaskRan = false;
+  const runner = createSyncRunner(async () =>
+    ++calls === 1
+      ? [
+          {
+            label: "descarga",
+            run: async () => {
+              await gate;
+            },
+          },
+          {
+            label: "reglas anteriores",
+            run: async () => {
+              staleTaskRan = true;
+            },
+          },
+        ]
+      : [],
+  );
+  const first = runner.start();
+  await Promise.resolve();
+  runner.invalidate();
+  release();
+  await first;
+  assert.equal(staleTaskRan, false);
+  assert.equal(runner.status.retryAt, 0);
+  await runner.start();
+  assert.equal(calls, 2);
+});

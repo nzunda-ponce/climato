@@ -4,23 +4,30 @@ export function dailyRainTotal(hours: Hour[]): number | null {
   if (
     hours.length !== 24 ||
     new Set(hours.map((h) => h.time.slice(11, 16))).size !== 24 ||
-    hours.some((h) => h.rain === null || !Number.isFinite(h.rain))
+    hours.some((h) => h.rain === null || !Number.isFinite(h.rain) || h.rain < 0)
   )
     return null;
   return hours.reduce((total, h) => total + h.rain!, 0);
 }
 
-// A dry working day and limited rain on the previous calendar day.
-// Missing rainfall must not be interpreted as dry weather or safe access.
-export function dayRainEligible(
-  hours: Hour[],
+// Prior-day rainfall remains a separate access criterion. Rain outside the
+// trial on the current day must not invalidate an otherwise dry work window.
+export function previousRainEligible(
   previous: Hour[],
   rules: Rules,
 ): boolean | null {
-  const rain = dailyRainTotal(hours),
-    before = dailyRainTotal(previous);
-  if (rain !== null && rain > rules.rain) return false;
-  if (before !== null && before >= rules.rain24Limit) return false;
-  if (rain === null || before === null) return null;
-  return true;
+  const rain = dailyRainTotal(previous);
+  return rain === null ? null : rain < rules.rain24Limit;
+}
+
+export function windowRainEligible(
+  hours: Hour[],
+  rules: Rules,
+): boolean | null {
+  if (
+    !hours.length ||
+    hours.some((h) => h.rain === null || !Number.isFinite(h.rain) || h.rain < 0)
+  )
+    return null;
+  return hours.reduce((s, h) => s + h.rain!, 0) <= rules.rain + 1e-9;
 }

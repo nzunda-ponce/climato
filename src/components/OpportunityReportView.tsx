@@ -4,19 +4,18 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CalendarDays,
-  CheckCircle2,
   Clock3,
   FileText,
-  Info,
   Printer,
   Search,
-  ShieldCheck,
 } from "lucide-react";
 import type {
   OpportunityReport,
   ReportZone,
 } from "@/domain/opportunity-report";
+import { estimatedDaysText, workDayLabel } from "@/domain/work-windows";
 import type { PossibleWindow } from "@/domain/work-windows";
+import { addDays } from "@/domain/types";
 import AutoSyncStatus from "./AutoSyncStatus";
 import PossibleWindows from "./PossibleWindows";
 import "./climate.css";
@@ -35,27 +34,42 @@ const timeLabel = (date: string | null) =>
         timeStyle: "short",
         timeZone: "America/Argentina/Buenos_Aires",
       })
-    : "Sin consulta disponible";
-const number = (n: number | null) =>
-  n === null
-    ? "—"
-    : n > 0 && n < 0.1
-      ? "<0,1"
-      : n.toLocaleString("es-AR", { maximumFractionDigits: 1 });
+    : "Todavía no se descargó";
 const percent = (n: number | null) =>
-  n === null ? "—" : n > 0 && n < 0.01 ? "<1%" : `${Math.round(n * 100)}%`;
+  n === null
+    ? "Sin datos"
+    : n > 0 && n < 0.01
+      ? "<1%"
+      : `${Math.round(n * 100)}%`;
 const normalize = (s: string) =>
   s
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-const statusLabel: Record<string, string> = {
-  review: "Para revisar primero",
-  watch: "Seguir evolución",
-  limited: "Respaldo limitado",
-  missing: "Sin cobertura",
-};
-
+function dayReading(day: ReportZone["daily"][number], today: string) {
+  if (day.probability === null)
+    return {
+      label: "Faltan datos",
+      action: "Esperar la actualización del pronóstico.",
+    };
+  if (day.source !== "pronóstico" || day.date > addDays(today, 7))
+    return {
+      label: "Todavía es orientativo",
+      action: "Volver a mirar cuando se acerque la fecha.",
+    };
+  if (!day.supported)
+    return {
+      label: "Necesita otra revisión",
+      action: "Faltan pronósticos para comparar. No confirma mal tiempo.",
+    };
+  return {
+    label: workDayLabel(day.probability),
+    action:
+      day.probability >= 0.4
+        ? "Consultar el horario del equipo antes de organizar la salida."
+        : "Seguir la actualización; por ahora no conviene contar con este día.",
+  };
+}
 function PeriodCard({
   label,
   period,
@@ -74,37 +88,35 @@ function PeriodCard({
       onClick={onSelect}
     >
       <span>{label}</span>
-      <strong>{number(period.expectedDays)}</strong>
-      <span>días aptos esperados</span>
+      <strong>
+        {period.expectedDays === null
+          ? "—"
+          : `≈ ${estimatedDaysText(period.expectedDays)}`}
+      </strong>
+      <span>días estimados para trabajar</span>
       <small>
-        {period.total
-          ? `${period.covered}/${period.total} días con datos`
-          : "Fuera del período de campaña"}
+        {period.expectedDays === null
+          ? period.total
+            ? `Falta el pronóstico de ${period.total - period.covered} días`
+            : "Fuera de la campaña"
+          : "Las fechas se confirman al acercarse"}
       </small>
-      {period.expectedDays === null && period.partialExpectedDays !== null && (
-        <small>
-          En la parte cubierta: {number(period.partialExpectedDays)} días
-          esperados.
-        </small>
-      )}
     </button>
   );
 }
-
 export default function OpportunityReportView() {
-  const [report, setReport] = useState<OpportunityReport | null>(null);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [zoneKey, setZoneKey] = useState("");
-  const [horizon, setHorizon] = useState<"7" | "14" | "campaign">("7");
-  const [date, setDate] = useState("");
-  const [windowsOpen, setWindowsOpen] = useState(false);
+  const [report, setReport] = useState<OpportunityReport | null>(null),
+    [error, setError] = useState("");
+  const [search, setSearch] = useState(""),
+    [zoneKey, setZoneKey] = useState(""),
+    [date, setDate] = useState("");
+  const [horizon, setHorizon] = useState<"7" | "14" | "campaign">("7"),
+    [windowsOpen, setWindowsOpen] = useState(false);
   const load = useCallback(async () => {
-    const r = await fetch("/api/report", { cache: "no-store" });
-    const data = await r.json();
-    if (!r.ok)
-      throw new Error(data.error || "No se pudo consultar el informe.");
-    setReport(data);
+    const r = await fetch("/api/report", { cache: "no-store" }),
+      d = await r.json();
+    if (!r.ok) throw new Error(d.error || "No se pudo actualizar el informe.");
+    setReport(d);
     setError("");
   }, []);
   useEffect(() => {
@@ -163,9 +175,10 @@ export default function OpportunityReportView() {
           date: selectedDay.date,
           expectedWindows: selectedDay.slots!,
           probability: selectedDay.probability! * 100,
+          source: selectedDay.source,
         }))
       : [];
-  const range =
+  const scenarios =
     horizon === "7"
       ? zone?.next7.scenarios
       : horizon === "14"
@@ -188,21 +201,23 @@ export default function OpportunityReportView() {
         <div className="report-intro">
           <div>
             <p className="report-eyebrow">
-              <FileText size={15} /> PLANIFICACIÓN DE UNIFORMIDADES
+              <FileText size={15} /> UNIFORMIDADES
             </p>
-            <h1>Informe de oportunidades</h1>
+            <h1>Cuándo podemos trabajar</h1>
             <p>
-              Cuándo aprovechar el buen tiempo y cuántas oportunidades podrían
-              quedar en cada zona.
+              Elegí una zona para ver qué días conviene revisar y cuántas
+              oportunidades podrían quedar.
             </p>
           </div>
           <div className="report-update">
             <Clock3 size={17} />
             <div>
-              <strong>Actualización automática</strong>
-              <span>Se revisa durante el día con el servidor encendido.</span>
+              <strong>Se actualiza automáticamente</strong>
+              <span>
+                Con el servidor encendido, incluso si cerrás la pestaña.
+              </span>
               <small>
-                Informe calculado:{" "}
+                Última revisión:{" "}
                 {report ? timeLabel(report.computedAt) : "Cargando…"} · hora
                 argentina
               </small>
@@ -219,46 +234,16 @@ export default function OpportunityReportView() {
               Reintentar
             </button>
             {report && (
-              <p>
-                Estás viendo una copia anterior. Revisá la fecha de las fuentes
-                antes de decidir.
-              </p>
+              <p>Los datos visibles corresponden a la revisión anterior.</p>
             )}
           </div>
         )}
         {report && !report.active && (
           <div className="report-notice">
-            La campaña cerró el {dateLabel(report.deadline)}. Actualizá el
-            cierre en Datos y reglas para planificar nuevas fechas.
+            La campaña cerró el {dateLabel(report.deadline)}. Cambiá el cierre
+            en Datos y reglas para planificar nuevas fechas.
           </div>
         )}
-        <section className="report-overview" aria-label="Estado de la campaña">
-          <div>
-            <span>Zonas para revisar primero</span>
-            <strong>
-              {report?.summary.toReview ?? "—"}
-              <small> / {report?.summary.zones ?? "—"}</small>
-            </strong>
-          </div>
-          <div>
-            <span>Equipos pendientes</span>
-            <strong>{report?.summary.pending ?? "—"}</strong>
-          </div>
-          <div>
-            <span>Zonas con cobertura de los próximos 7 días</span>
-            <strong>
-              {report?.summary.covered7 ?? "—"}
-              <small> / {report?.summary.zones ?? "—"}</small>
-            </strong>
-          </div>
-        </section>
-        <p className="report-caption">
-          Las zonas comparten condiciones meteorológicas: varios equipos no
-          convierten un mismo día apto en varias jornadas.{" "}
-          {report?.excluded
-            ? `${report.excluded} equipos excluidos por coordenadas a verificar.`
-            : ""}
-        </p>
         <div className="report-layout">
           <aside className="report-zones">
             <label className="report-search">
@@ -270,7 +255,7 @@ export default function OpportunityReportView() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </label>
-            <p className="report-eyebrow">ZONAS CON TRABAJOS PENDIENTES</p>
+            <p className="report-eyebrow">ELEGÍ UNA ZONA</p>
             <nav aria-label="Elegir zona del informe">
               {filtered.map((z) => (
                 <button
@@ -284,15 +269,11 @@ export default function OpportunityReportView() {
                   }}
                 >
                   <strong>{z.name}</strong>
-                  <span>
-                    {z.pending} equipos ·{" "}
-                    {z.provinces.join(" / ") ||
-                      `${z.lat.toFixed(2)}, ${z.lon.toFixed(2)}`}
-                  </span>
+                  <span>{z.pending} equipos pendientes</span>
                   <small>
                     {z.nextOpportunity
-                      ? `${dateLabel(z.nextOpportunity.date)} · ${percent(z.nextOpportunity.probability)} de escenarios con día apto`
-                      : "Sin candidata con respaldo suficiente a 7 días"}
+                      ? `Revisar ${dateLabel(z.nextOpportunity.date)}`
+                      : "Ver qué falta confirmar"}
                   </small>
                 </button>
               ))}
@@ -301,7 +282,7 @@ export default function OpportunityReportView() {
               <p className="report-empty">
                 {search
                   ? "No hay zonas que coincidan con la búsqueda."
-                  : "Todavía no hay equipos pendientes con ubicación válida. La carga automática aparecerá aquí cuando termine."}
+                  : "Todavía no hay equipos pendientes con ubicación válida. Aparecerán al terminar la carga automática."}
               </p>
             )}
           </aside>
@@ -309,26 +290,20 @@ export default function OpportunityReportView() {
             <article className="report-zone" key={zone.key}>
               <div className="report-zone-heading">
                 <div>
-                  <p className="report-eyebrow">INFORME POR ZONA</p>
+                  <p className="report-eyebrow">PLAN DE TRABAJO</p>
                   <h2>{zone.name}</h2>
-                  <p>
-                    {zone.fields.join(" · ") ||
-                      "Ubicaciones agrupadas por cercanía meteorológica"}
-                  </p>
+                  <p>{zone.fields.join(" · ")}</p>
                   <small>
-                    {zone.pending} equipos pendientes · zona {zone.key} ·{" "}
+                    {zone.pending} equipos pendientes ·{" "}
                     {zone.provinces.join(" / ")}
                   </small>
                   <small className="report-source-age">
-                    Corto plazo: {timeLabel(zone.sources.ensembleAt)} ·{" "}
+                    Pronóstico cercano:{" "}
                     {zone.sources.ensembleFresh
-                      ? "vigente"
-                      : "sin datos vigentes"}
-                    {!!zone.warnings.length &&
-                      ` · ${zone.warnings.length} advertencias en Fuentes`}
+                      ? timeLabel(zone.sources.ensembleAt)
+                      : "pendiente de actualización"}
                   </small>
                 </div>
-                <ShieldCheck size={32} />
               </div>
               <section
                 className={`report-opportunity ${zone.nextOpportunity ? "has-opportunity" : ""}`}
@@ -336,19 +311,17 @@ export default function OpportunityReportView() {
                 <CalendarDays size={24} />
                 <div>
                   <span className="report-eyebrow">
-                    {zone.nextOpportunity
-                      ? "MEJOR CANDIDATA EN LOS PRÓXIMOS 7 DÍAS"
-                      : "PRÓXIMOS 7 DÍAS"}
+                    PRÓXIMA FECHA PARA REVISAR
                   </span>
                   <h3>
                     {zone.nextOpportunity
-                      ? `${dateLabel(zone.nextOpportunity.date)} · ${percent(zone.nextOpportunity.probability)}`
-                      : "Sin fecha para priorizar con respaldo suficiente"}
+                      ? dateLabel(zone.nextOpportunity.date)
+                      : "Todavía no hay una fecha clara"}
                   </h3>
                   <p>
                     {zone.nextOpportunity
-                      ? "Conviene revisar esta fecha primero. Confirmá la franja de cada equipo y el estado del campo antes de organizar la salida."
-                      : "Consultá el detalle: puede haber oportunidades con menor probabilidad o cobertura incompleta. Esto no equivale a siete días de mal tiempo."}
+                      ? "Podría servir para trabajar. Consultá el horario de cada equipo y el acceso al campo antes de organizar la salida."
+                      : "Mirá el detalle de abajo: puede haber días que sirvan, pero falta confirmar el tiempo o completar las descargas."}
                   </p>
                 </div>
               </section>
@@ -373,52 +346,39 @@ export default function OpportunityReportView() {
                 />
               </section>
               <p className="report-caption">
-                {period.total
-                  ? `${dateLabel(period.start)} — ${dateLabel(period.end)}.`
-                  : "El período no contiene días futuros de campaña."}{" "}
-                El total suma posibilidades diarias: 3,5 días esperados no
-                significa 3 días y medio confirmados. Hoy se consulta por
-                separado porque ya está transcurriendo.
+                Es una cantidad aproximada de días, no de trabajos confirmados.
+                Varios equipos pueden aprovechar el mismo día. Hoy se consulta
+                por separado porque ya está transcurriendo.
               </p>
-              {range && (
+              {scenarios && (
                 <div className="report-range">
                   <strong>
-                    Entre {range.range[0]} y {range.range[1]} días aptos
+                    El pronóstico puede variar: entre {scenarios.range[0]} y{" "}
+                    {scenarios.range[1]} días aptos.
                   </strong>
                   <span>
-                    Rango central del 80% de los escenarios con datos completos
-                    · {range.samples} miembros de {range.families} familias de
-                    modelos. Representa dispersión del pronóstico; no es una
-                    garantía de acierto.
+                    Volvé a mirar las fechas antes de preparar una salida.
                   </span>
                 </div>
               )}
               {horizon === "campaign" && (
                 <div className="report-notice">
-                  A semanas o meses de distancia, usá el total como orientación
-                  de campaña. La previsión lejana es experimental y no permite
-                  comprometer días ni horarios concretos.
+                  Lo que está lejos sirve para organizar la campaña. Todavía no
+                  permite decidir una fecha de salida.
                 </div>
               )}
               <section className="report-section">
                 <div className="report-section-title">
-                  <h3>Fechas para evaluar</h3>
-                  <span>Elegí una fecha para ver qué podría venir después</span>
+                  <h3>Qué hacer con cada fecha</h3>
+                  <span>Elegí un día para ver qué podría venir después</span>
                 </div>
-                <p className="report-caption">
-                  Para revisar primero: al menos{" "}
-                  {report!.rules.minimumProbability}% de escenarios favorables,
-                  dentro de los próximos 7 días y con datos suficientes de
-                  varios modelos.
-                </p>
                 <div className="report-table-scroll">
                   <table className="report-table">
                     <thead>
                       <tr>
                         <th>Fecha</th>
-                        <th>Posibilidad de día apto</th>
-                        <th>Uso sugerido</th>
-                        <th>Respaldo</th>
+                        <th>Cómo se ve</th>
+                        <th>Próximo paso</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -426,73 +386,42 @@ export default function OpportunityReportView() {
                         .filter(
                           (d) => horizon !== "7" || d.date <= zone.next7.end,
                         )
-                        .map((day) => (
-                          <tr
-                            key={day.date}
-                            className={
-                              selectedDay?.date === day.date ? "selected" : ""
-                            }
-                          >
-                            <td>
-                              <button
-                                aria-label={`Analizar ${dateLabel(day.date)}`}
-                                aria-pressed={selectedDay?.date === day.date}
-                                onClick={() => {
-                                  setDate(day.date);
-                                  setWindowsOpen(false);
-                                }}
-                              >
-                                {dateLabel(day.date)}
-                              </button>
-                            </td>
-                            <td>
-                              <div className="report-probability">
-                                <span>{percent(day.probability)}</span>
-                                <span className="report-probability-track">
-                                  <i
-                                    style={{
-                                      width: `${(day.probability ?? 0) * 100}%`,
-                                    }}
-                                  />
+                        .map((d) => {
+                          const reading = dayReading(d, report!.today);
+                          return (
+                            <tr
+                              key={d.date}
+                              className={
+                                selectedDay?.date === d.date ? "selected" : ""
+                              }
+                            >
+                              <td>
+                                <button
+                                  aria-label={`Analizar ${dateLabel(d.date)}`}
+                                  aria-pressed={selectedDay?.date === d.date}
+                                  onClick={() => {
+                                    setDate(d.date);
+                                    setWindowsOpen(false);
+                                  }}
+                                >
+                                  {dateLabel(d.date)}
+                                </button>
+                              </td>
+                              <td>
+                                <span className={`report-badge ${d.status}`}>
+                                  {reading.label}
                                 </span>
-                              </div>
-                            </td>
-                            <td>
-                              <span className={`report-badge ${day.status}`}>
-                                {statusLabel[day.status]}
-                              </span>
-                              {day.source !== "pronóstico" &&
-                                day.probability !== null && (
-                                  <small>
-                                    Estimación {day.source} · tentativa
-                                  </small>
-                                )}
-                            </td>
-                            <td>
-                              {day.source === "pronóstico" ? (
-                                <>
-                                  {day.families} familias · {day.members}{" "}
-                                  miembros
-                                  <small>
-                                    {day.supported
-                                      ? "Cobertura suficiente de escenarios"
-                                      : "Faltan fuentes o miembros"}
-                                  </small>
-                                </>
-                              ) : day.probability !== null ? (
-                                "Modelo de largo plazo + históricos"
-                              ) : (
-                                "Faltan datos vigentes"
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td>{reading.action}</td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
                 {!zone.daily.length && (
                   <p className="report-empty">
-                    No hay fechas futuras dentro del cierre de campaña.
+                    No hay fechas futuras dentro de la campaña.
                   </p>
                 )}
               </section>
@@ -500,56 +429,35 @@ export default function OpportunityReportView() {
                 <section className="report-repeat">
                   <div className="report-section-title">
                     <h3>
-                      Si aprovechamos el {dateLabel(selectedDay.date)}, ¿qué
-                      podría quedar?
+                      Si trabajamos el {dateLabel(selectedDay.date)}, ¿qué
+                      podría venir después?
                     </h3>
-                    <Info size={19} />
                   </div>
                   {selectedDay.following ? (
                     <>
                       <div className="report-repeat-metrics">
                         <div>
                           <strong>
-                            {number(selectedDay.following.expected)}
+                            ≈{" "}
+                            {estimatedDaysText(selectedDay.following.expected)}
                           </strong>
                           <span>
-                            otros días aptos esperados hasta{" "}
+                            otros días que podrían servir hasta el{" "}
                             {dateLabel(selectedDay.followingEnd)}
-                          </span>
-                        </div>
-                        <div>
-                          <strong>
-                            {percent(selectedDay.following.noMoreDays)}
-                          </strong>
-                          <span>
-                            de escenarios compatibles sin otro día apto en ese
-                            período
                           </span>
                         </div>
                       </div>
                       <p>
-                        Entre los escenarios en los que el{" "}
-                        {dateLabel(selectedDay.date)} resulta apto, el rango
-                        central del 80% tiene entre{" "}
-                        {selectedDay.following.range[0]} y{" "}
-                        {selectedDay.following.range[1]} otros días aptos en los
-                        siguientes {selectedDay.followingTotal} días. Se
-                        conserva la secuencia de cada escenario: varios días de
-                        buen tiempo pueden venir juntos.
+                        {selectedDay.following.noMoreDays > 0.5
+                          ? "Podría ser una oportunidad aislada. Vale la pena revisar el horario con atención."
+                          : "Podrían aparecer más días útiles, pero conviene volver a confirmarlos al acercarse."}
                       </p>
-                      <small>
-                        {selectedDay.following.samples} escenarios compatibles ·{" "}
-                        {selectedDay.following.supportingFamilies} familias
-                        representadas. Es una estimación condicionada del
-                        modelo, no una frecuencia de acierto comprobada.
-                      </small>
                     </>
                   ) : (
                     <p>
-                      No hay suficientes escenarios completos para estimar con
-                      respaldo cuántos días aptos seguirían a esta fecha. No
-                      extrapolamos un día lindo al resto de la semana. Revisá
-                      los totales y su cobertura.
+                      Todavía no podemos estimar bien qué vendría después de
+                      esta fecha. El total de arriba resume lo que sabemos por
+                      ahora.
                     </p>
                   )}
                   {!!rows.length && selectedDay.source === "pronóstico" && (
@@ -565,13 +473,12 @@ export default function OpportunityReportView() {
               )}
               <details className="report-today">
                 <summary>
-                  Hoy, {dateLabel(report!.today)} · {zone.todayWindows.length}{" "}
-                  equipos con una franja propuesta aún por comenzar
+                  Hoy, {dateLabel(report!.today)} · horarios que todavía podrían
+                  aprovecharse
                 </summary>
                 <p>
-                  Los horarios provienen del acuerdo entre modelos horarios y
-                  pueden diferir del porcentaje diario del ensemble. No
-                  equivalen a trabajos confirmados.
+                  Son horarios propuestos, no trabajos confirmados. Revisá el
+                  viento y el acceso antes de salir.
                 </p>
                 {zone.todayWindows.length ? (
                   <ul>
@@ -579,34 +486,28 @@ export default function OpportunityReportView() {
                       <li key={w.id}>
                         <strong>{w.name}</strong> · {w.field} ·{" "}
                         {w.window!.start.slice(11, 16)}–
-                        {w.window!.end.slice(11, 16)} · acuerdo{" "}
-                        {w.window!.probability}% · camino {w.road.toLowerCase()}
+                        {w.window!.end.slice(11, 16)} · camino{" "}
+                        {w.road.toLowerCase()}
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <p>
-                    No hay una franja restante respaldada por datos horarios
-                    recientes. Revisá la actualización de las fuentes antes de
-                    decidir.
+                    Todavía no tenemos un horario para proponer. Puede faltar un
+                    pronóstico reciente; no significa necesariamente que hoy no
+                    se pueda trabajar.
                   </p>
                 )}
               </details>
-              <section className="report-section">
-                <div className="report-section-title">
-                  <h3>Perspectiva por semana</h3>
-                  <span>
-                    Las fechas lejanas se usan para organizar recursos
-                  </span>
-                </div>
+              <details className="report-sources" open={horizon === "campaign"}>
+                <summary>Ver las próximas semanas</summary>
                 <div className="report-table-scroll">
                   <table className="report-table">
                     <thead>
                       <tr>
-                        <th>Período</th>
-                        <th>Días aptos esperados</th>
-                        <th>Cobertura</th>
-                        <th>Fuentes utilizadas</th>
+                        <th>Semana</th>
+                        <th>Días estimados</th>
+                        <th>Qué falta confirmar</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -618,67 +519,67 @@ export default function OpportunityReportView() {
                               {dateLabel(w.start)} — {dateLabel(w.end)}
                             </td>
                             <td>
-                              {number(w.expectedDays)}
-                              {w.expectedDays === null &&
-                                w.partialExpectedDays !== null && (
-                                  <small>
-                                    {number(w.partialExpectedDays)} en la parte
-                                    cubierta
-                                  </small>
-                                )}
+                              {w.expectedDays === null
+                                ? "Sin cálculo completo"
+                                : `≈ ${estimatedDaysText(w.expectedDays)} días`}
                             </td>
                             <td>
-                              {w.covered}/{w.total} días
-                            </td>
-                            <td>
-                              {[
-                                w.shortTermDays
-                                  ? `${w.shortTermDays} de corto plazo`
-                                  : "",
-                                w.subseasonalDays
-                                  ? `${w.subseasonalDays} de EC46`
-                                  : "",
-                                w.seasonalDays
-                                  ? `${w.seasonalDays} de SEAS5`
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" · ") || "Sin cobertura"}
+                              {w.covered < w.total
+                                ? `Faltan ${w.total - w.covered} días de pronóstico`
+                                : "Volver a mirar las fechas al acercarse"}
                             </td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
                 </div>
-              </section>
+              </details>
               <details className="report-sources">
                 <summary>
-                  Fuentes, vigencia y equipos de esta zona
-                  {zone.warnings.length
-                    ? ` · ${zone.warnings.length} advertencias`
-                    : ""}
+                  Ver porcentajes y datos del cálculo (opcional)
                 </summary>
-                <dl>
-                  <dt>Consulta del ensemble</dt>
-                  <dd>
-                    {timeLabel(zone.sources.ensembleAt)} ·{" "}
-                    {zone.sources.ensembleFresh
-                      ? "vigente"
-                      : "sin datos vigentes"}
-                  </dd>
-                  <dt>Consulta del largo plazo</dt>
-                  <dd>
-                    {timeLabel(zone.sources.seasonalAt)} ·{" "}
-                    {zone.sources.seasonalFresh
-                      ? "vigente"
-                      : "sin datos vigentes"}
-                  </dd>
-                  <dt>Históricos disponibles</dt>
-                  <dd>
-                    {zone.sources.historyYears} años · usados para estimar
-                    ventanas lejanas, no para inventar un pronóstico faltante.
-                  </dd>
-                </dl>
+                <p>
+                  Estos datos explican la estimación. No cambian los requisitos
+                  para que el ensayo sea apto.
+                </p>
+                <p>
+                  Zona meteorológica: {zone.key}. Corto plazo consultado:{" "}
+                  {timeLabel(zone.sources.ensembleAt)}. Largo plazo:{" "}
+                  {timeLabel(zone.sources.seasonalAt)}. Históricos:{" "}
+                  {zone.sources.historyYears} años.
+                </p>
+                <p>
+                  Para marcar una fecha como candidata pedimos varios
+                  pronósticos para comparar y el umbral guardado en Reglas (
+                  {report!.rules.minimumProbability}%). Si faltan fuentes,
+                  mostramos «Necesita otra revisión»; eso habla de los datos
+                  disponibles, no del mal tiempo.
+                </p>
+                <ul>
+                  {zone.daily.map((d) => (
+                    <li key={d.date}>
+                      {dateLabel(d.date)}: {percent(d.probability)} de
+                      escenarios con un día apto · {d.source} · {d.families}{" "}
+                      grupos de modelos y {d.members} escenarios.
+                    </li>
+                  ))}
+                </ul>
+                {scenarios && (
+                  <p>
+                    El rango mostrado contiene el 80% central de los escenarios
+                    con días completos. No es una garantía de acierto.
+                  </p>
+                )}
+                {selectedDay?.following && (
+                  <p>
+                    Después de la fecha elegida: media{" "}
+                    {selectedDay.following.expected.toFixed(2)} otros días;{" "}
+                    {percent(selectedDay.following.noMoreDays)} de los
+                    escenarios compatibles no muestran otro día apto.
+                    Conservamos la secuencia de cada escenario, sin suponer que
+                    los días sean independientes.
+                  </p>
+                )}
                 {!!zone.warnings.length && (
                   <ul className="report-warnings">
                     {zone.warnings.map((w) => (
@@ -686,59 +587,36 @@ export default function OpportunityReportView() {
                     ))}
                   </ul>
                 )}
-                <ul>
-                  {zone.equipment.map((e) => (
-                    <li key={e.id}>
-                      {e.name} · {e.field} · camino {e.road.toLowerCase()}
-                    </li>
-                  ))}
-                </ul>
               </details>
             </article>
           ) : (
             <div className="report-empty">
               {report
-                ? "Seleccioná una zona con equipos pendientes para ver el informe."
+                ? "Elegí una zona con equipos pendientes."
                 : "Preparando el informe…"}
             </div>
           )}
         </div>
         <section className="report-method">
-          <div>
-            <CheckCircle2 size={22} />
-            <h2>Cómo hacemos la estimación</h2>
-          </div>
+          <h2>Cómo leer este informe</h2>
           <p>
-            Comparamos muchos escenarios posibles de viento y lluvia. Un día
-            cuenta como apto si permite al menos {report?.rules.minHours ?? "—"}{" "}
-            horas continuas para trabajar, entre las{" "}
-            {report?.rules.startHour ?? "—"} y las{" "}
-            {report?.rules.endHour ?? "—"}, con viento de hasta{" "}
-            {report?.rules.wind ?? "—"} km/h, lluvia del día de hasta{" "}
-            {report?.rules.rain ?? "—"} mm y menos de{" "}
-            {report?.rules.rain24Limit ?? "—"} mm el día anterior. Se aplican
-            las reglas guardadas en la app.
+            Buscamos al menos {report?.rules.minHours ?? "—"} horas seguidas con
+            viento de hasta {report?.rules.wind ?? "—"} km/h y sin lluvia
+            durante el ensayo. Puede llover antes o después y aun así quedar un
+            horario útil. Sigue vigente el límite de{" "}
+            {report?.rules.rain24Limit ?? "—"} mm de lluvia el día anterior para
+            evaluar el acceso.
           </p>
           <p>
-            Si 7 de cada 10 escenarios permiten trabajar, mostramos una
-            posibilidad del 70%. Al sumar las posibilidades de cada fecha
-            estimamos cuántos días aptos podrían quedar. Para ver qué ocurriría
-            después de una fecha favorable, seguimos esos mismos escenarios
-            durante los días siguientes.
+            Comparamos varios pronósticos para estimar cuántos días podrían
+            servir. «Buen día para evaluar» invita a revisar horarios; «Necesita
+            otra revisión» significa que faltan pronósticos para comparar.
+            Ninguna etiqueta confirma una salida por sí sola.
           </p>
           <p>
-            El corto plazo sirve para preparar salidas. A mayor distancia usamos
-            otros pronósticos y años de clima histórico para estimar ventanas;
-            esas fechas son orientativas. Las probabilidades todavía no tienen
-            una tasa de acierto local comprobada. Antes de salir, verificá el
-            viento en el lugar, los accesos y la disponibilidad real de equipos
-            y cuadrillas.
-          </p>
-          <p>
-            El servidor actualiza las fuentes automáticamente, incluso con la
-            pestaña cerrada. Si la computadora o el servidor están apagados,
-            actualiza al volver a iniciarse. Las fuentes vencidas dejan de
-            participar y la falta de cobertura se muestra explícitamente.
+            Las fechas lejanas son orientativas. Si el servidor está encendido,
+            los resultados se actualizan solos. Antes de salir confirmá el
+            viento en el lugar, los caminos y la disponibilidad del equipo.
           </p>
         </section>
       </main>

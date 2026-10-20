@@ -2088,3 +2088,33 @@
     gap: 12px;
   }
 }
+
+/* Keep calendar cards readable instead of shrinking every week to fit. */
+.windy-periods > button,
+.windy-periods > button:first-child {
+  flex: 0 0 150px;
+  min-width: 150px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.windy-periods small {
+  font-size: 11px;
+  color: #c5dce6;
+}
+.windy-periods .windy-weekday {
+  font-size: 10px;
+  color: #a5c0ce;
+}
+.windy-timeline-source {
+  font-size: 10px;
+}
+.windy-timeline-nav {
+  display: flex;
+  gap: 4px;
+}
+.windy-timeline-nav button {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+}

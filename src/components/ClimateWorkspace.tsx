@@ -5,6 +5,8 @@ import Link from "next/link";
 import {
   CalendarDays,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Crosshair,
   Info,
   Layers,
@@ -20,8 +22,9 @@ import { nextMonday, weatherMapPeriod } from "@/domain/map-period";
 import { periodPotential } from "@/domain/climatic";
 import {
   listPossibleWindows,
-  workWindowSummary,
-  zoneWorkWindows,
+  workDaySummary,
+  workDayLabel,
+  estimatedDaysText,
 } from "@/domain/work-windows";
 import PossibleWindows from "./PossibleWindows";
 import { RAIN_GRADIENT, weatherPeriodDays } from "@/domain/weather-grid";
@@ -36,8 +39,6 @@ const fmt = (v: number | null, digits = 0) =>
     : v.toLocaleString("es-AR", { maximumFractionDigits: digits });
 const estimate = (value: number | null) =>
   value !== null && value > 0 && value < 0.1 ? "<0,1" : fmt(value, 1);
-const chance = (value: number | null) =>
-  value !== null && value > 0 && value < 1 ? "<1%" : `${fmt(value)}%`;
 const label = (s: string) =>
   new Date(s + "T12:00Z").toLocaleDateString("es-AR", {
     day: "numeric",
@@ -179,10 +180,6 @@ export default function ClimateWorkspace() {
   const complete = zones.filter(
     (z) => z.potential.covered === z.potential.total && z.potential.total > 0,
   );
-  const minimumProbability = 0; // Show every possible window; probability is displayed, not used to hide dates.
-  const windowSummary = range
-    ? workWindowSummary(zones, range.start, range.end, minimumProbability)
-    : null;
   const surface = useMemo(
     () =>
       zones.flatMap((z) =>
@@ -194,14 +191,12 @@ export default function ClimateWorkspace() {
                 lat: z.lat,
                 lon: z.lon,
                 key: z.key,
-                value:
-                  zoneWorkWindows(z, range.start, range.end, minimumProbability)
-                    .bestProbability ?? 0,
-                label: `${estimate(zoneWorkWindows(z, range.start, range.end, minimumProbability).expectedWindows)} ventanas esperadas por equipo · ${fmt(zoneWorkWindows(z, range.start, range.end, minimumProbability).bestProbability)}% de probabilidad máxima`,
+                value: z.potential.fraction * 100,
+                label: `≈ ${estimate(z.potential.expectedDays)} días estimados para trabajar en el período`,
               },
             ],
       ),
-    [zones, range, minimumProbability],
+    [zones, range],
   );
   const chosen = zones.find((z) => z.key === selected),
     plans = useMemo(
@@ -226,10 +221,9 @@ export default function ClimateWorkspace() {
           .id
       : undefined);
   const partial = complete.length < zones.length;
-  const chosenWindows =
-    chosen && range
-      ? zoneWorkWindows(chosen, range.start, range.end, minimumProbability)
-      : null;
+  const daySummary = range
+    ? workDaySummary(chosen ? [chosen] : zones, range.start, range.end)
+    : null;
   const possibleWindows = useMemo(() => {
     if (!windowsOpen || !data || !range) return [];
     const scope = data.plans.filter((plan) =>
@@ -314,7 +308,7 @@ export default function ClimateWorkspace() {
         </div>
         <div className="windy-map-label">
           <span className="windy-status-dot" />
-          {layer === "rain" ? "Lluvia + viento" : "Disponibilidad en zonas"}
+          {layer === "rain" ? "Lluvia + viento" : "Días aptos por zona"}
           <span>
             {layer === "rain" && mapPeriod
               ? mapPeriod.start === data?.today
@@ -358,7 +352,11 @@ export default function ClimateWorkspace() {
                 <X size={14} />
               </button>
               <span className="climate-eyebrow">
-                {chosen ? "EQUIPO SELECCIONADO" : "OPORTUNIDADES DE TRABAJO"}
+                {chosen
+                  ? equipment
+                    ? "EQUIPO SELECCIONADO"
+                    : "ZONA SELECCIONADA"
+                  : "OPORTUNIDADES DE TRABAJO"}
               </span>
               <h1>
                 {chosen
@@ -376,65 +374,47 @@ export default function ClimateWorkspace() {
               )}
               <div className="windy-potential">
                 {data
-                  ? estimate(
-                      chosenWindows
-                        ? chosenWindows.covered
-                          ? chosenWindows.expectedWindows
-                          : null
-                        : (windowSummary?.expectedWindowsPerEquipment ?? null),
-                    )
+                  ? estimatedDaysText(daySummary?.expectedDays ?? null)
                   : "—"}
                 <span>
-                  {chosenWindows
-                    ? "ventanas esperadas para este equipo"
-                    : "ventanas esperadas por equipo"}
+                  {chosen
+                    ? "días estimados para trabajar"
+                    : "días estimados por zona"}
                 </span>
               </div>
-              {chosenWindows ? (
-                <p className="windy-equipment-summary">
-                  Mejor ventana:{" "}
-                  <strong>{chance(chosenWindows.bestProbability)}</strong> de
-                  probabilidad
-                </p>
-              ) : (
-                <p className="windy-equipment-summary">
-                  <strong>
-                    {data ? (windowSummary?.equipmentWithWindow ?? 0) : "—"}
-                  </strong>{" "}
-                  equipos con fechas candidatas para revisar
-                </p>
-              )}
-              {!chosenWindows && (
-                <p className="windy-equipment-summary">
-                  Probabilidad media diaria:{" "}
-                  <strong>
-                    {chance(windowSummary?.meanDailyProbability ?? null)}
-                  </strong>
-                </p>
-              )}
+              <p className="windy-equipment-summary">
+                {chosen
+                  ? "Revisá las fechas y confirmá el horario antes de salir."
+                  : "Elegí una zona o un equipo para ver sus mejores fechas."}
+              </p>
               <button
                 className="windy-view-windows"
                 disabled={!data}
                 onClick={() => setWindowsOpen(true)}
               >
-                Ver ventanas posibles
+                Ver días y horarios
               </button>
               <p className="windy-basis">
-                Promedio de escenarios, no horarios confirmados. Consultá las
-                fechas y su probabilidad.
+                Es una estimación de días, no trabajos confirmados. Un mismo día
+                puede servir para varios equipos.
               </p>
               {chosen ? (
                 <>
-                  <h3>Próximas oportunidades</h3>
+                  <h3>Días para revisar</h3>
                   <div className="windy-opportunities">
                     {chosen.days
                       .filter(
                         (d) =>
                           d.date >= data!.climatic.start &&
+                          d.date <= addDays(data!.today, 14) &&
                           (d.probability ?? 0) > 0 &&
                           (d.slots ?? 0) > 0,
                       )
+                      .sort(
+                        (a, b) => (b.probability ?? 0) - (a.probability ?? 0),
+                      )
                       .slice(0, 3)
+                      .sort((a, b) => a.date.localeCompare(b.date))
                       .map((d) => (
                         <button
                           key={d.date}
@@ -443,7 +423,14 @@ export default function ClimateWorkspace() {
                             setPeriod(d.date);
                           }}
                         >
-                          {label(d.date)} <span>Ver día</span>
+                          {label(d.date)}{" "}
+                          <span>
+                            {workDayLabel(
+                              d.probability,
+                              d.source !== "pronóstico" ||
+                                d.date > addDays(data!.today, 7),
+                            )}
+                          </span>
                         </button>
                       ))}
                     {!chosen.days.some(
@@ -492,15 +479,11 @@ export default function ClimateWorkspace() {
                         >
                           <span>{z.name}</span>
                           <strong>
-                            {estimate(
-                              zoneWorkWindows(
-                                z,
-                                range.start,
-                                range.end,
-                                minimumProbability,
-                              ).expectedWindows,
+                            {estimatedDaysText(
+                              workDaySummary([z], range.start, range.end)
+                                .expectedDays,
                             )}{" "}
-                            esperadas/equipo
+                            días estimados
                           </strong>
                         </button>
                       ))}
@@ -513,7 +496,7 @@ export default function ClimateWorkspace() {
                 onClick={() => setInfo(true)}
               >
                 <Info size={12} />
-                Cómo contamos las ventanas
+                Cómo leer estos resultados
               </button>
             </aside>
           )}
@@ -534,7 +517,7 @@ export default function ClimateWorkspace() {
               onClick={() => setLayer("availability")}
             >
               <CalendarDays size={16} />
-              Disponibilidad
+              Días aptos
             </button>
             <details className="windy-map-options">
               <summary>Ajustar mapa</summary>
@@ -568,7 +551,7 @@ export default function ClimateWorkspace() {
                 ? mapPeriod?.start === data?.today
                   ? "Lluvia de hoy · mm"
                   : "Lluvia acumulada esperada · mm"
-                : "Probabilidad de ventana · %"}
+                : "Días estimados para trabajar"}
             </span>
             <div
               style={
@@ -584,7 +567,9 @@ export default function ClimateWorkspace() {
                         ? weatherPeriodDays(mapPeriod.start, mapPeriod.end)
                         : 1),
                   )
-                : [0, 25, 50, 75, 100]
+                : [0, 0.25, 0.5, 0.75, 1].map(
+                    (fraction) => fraction * (daySummary?.totalDays ?? 1),
+                  )
               ).map((v) => (
                 <span key={v}>
                   {fmt(v, 1)}
@@ -622,6 +607,24 @@ export default function ClimateWorkspace() {
                 Por semana
               </button>
             </div>
+            <div className="windy-timeline-nav">
+              <button
+                aria-label="Ver fechas anteriores"
+                onClick={() =>
+                  timeline.current?.scrollBy({ left: -450, behavior: "smooth" })
+                }
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                aria-label="Ver fechas siguientes"
+                onClick={() =>
+                  timeline.current?.scrollBy({ left: 450, behavior: "smooth" })
+                }
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
             {granularity === "day" && data && range && (
               <input
                 aria-label="Ir a fecha"
@@ -641,15 +644,25 @@ export default function ClimateWorkspace() {
           </div>
           <div className="windy-periods" ref={timeline}>
             {periods.map((p) => {
-              const stats = workWindowSummary(
-                data!.climatic.zones,
+              const stats = workDaySummary(
+                chosen ? [chosen] : data!.climatic.zones,
                 p.start,
                 p.end,
-                minimumProbability,
               );
-              const displayPercent = stats.meanDailyProbability;
               const fraction =
-                displayPercent === null ? null : displayPercent / 100;
+                stats.expectedDays === null || !stats.totalDays
+                  ? null
+                  : stats.expectedDays / stats.totalDays;
+              const tentative =
+                p.start > addDays(data!.today, 7) ||
+                (chosen ? [chosen] : data!.climatic.zones).some((z) =>
+                  z.days.some(
+                    (d) =>
+                      d.date >= p.start &&
+                      d.date <= p.end &&
+                      d.source !== "pronóstico",
+                  ),
+                );
               return (
                 <button
                   key={p.key}
@@ -671,20 +684,25 @@ export default function ClimateWorkspace() {
                     <b style={{ width: `${(fraction ?? 0) * 100}%` }} />
                   </i>
                   <small>
-                    {fraction === null
-                      ? "Cargando"
-                      : `${chance(stats.meanDailyProbability)} prob. diaria`}
+                    {stats.expectedDays === null
+                      ? "Faltan datos"
+                      : granularity === "day" && p.key !== "campaign"
+                        ? workDayLabel(stats.expectedDays, tentative)
+                        : `≈ ${estimatedDaysText(stats.expectedDays)} días aptos`}
                   </small>
                   <small className="windy-weekday">
-                    {stats.equipmentWithWindow}/{stats.totalEquipment} equipos
-                    con posibilidades
+                    {chosen ? "Esta zona" : "Promedio por zona"}
+                    {tentative ? " · a confirmar" : ""}
                   </small>
                 </button>
               );
             })}
           </div>
           <div className="windy-timeline-source">
-            <span>Las fechas lejanas son orientativas.</span>
+            <span>
+              Los números indican días estimados para trabajar. Las fechas
+              lejanas se vuelven a evaluar al acercarse.
+            </span>
           </div>
         </section>
         {windowsOpen && data && range && (
@@ -708,17 +726,15 @@ export default function ClimateWorkspace() {
             <h2>Cuándo se puede trabajar</h2>
             <p>
               Buscamos {data?.rules.minHours ?? 4} horas seguidas con viento de
-              hasta {data?.rules.wind ?? 16} km/h, sin lluvia en el día y menos
-              de {data?.rules.rain24Limit ?? 15} mm el día anterior.
+              hasta {data?.rules.wind ?? 16} km/h, sin lluvia durante el ensayo
+              y menos de {data?.rules.rain24Limit ?? 15} mm el día anterior.
             </p>
             <p>
-              La cifra principal es el promedio de ventanas esperadas por
-              equipo, conservando la incertidumbre. Los decimales reflejan ese
-              promedio. El porcentaje indica en cuántos escenarios se podría
-              trabajar: un 30% equivale a 3 de cada 10. Mostramos también las
-              posibilidades menos seguras. En «Ver ventanas posibles» podés
-              consultar equipo, fecha y horario cuando esté disponible. Las
-              fechas lejanas siguen siendo tentativas.
+              La cifra principal indica cuántos días podrían servir para
+              trabajar en el período elegido. Por ejemplo, unos 2 días en una
+              semana. Si no elegís una zona, mostramos el promedio entre zonas.
+              La lluvia de noche no descarta un ensayo que pueda hacerse en
+              horas secas. Confirmá los horarios antes de salir.
             </p>
             <p>
               El mapa muestra la lluvia y el viento de hoy. Al elegir otra

@@ -55,15 +55,19 @@ const forecast = (values: Hour[][]): WeatherForecast => ({
   source: "test",
 });
 const now = new Date("2026-10-15T12:00:00Z");
-test("rain later in the day vetoes the entire working day", () => {
+test("rain later in the day leaves the dry morning available for a trial", () => {
   const h = hours().map((v) => ({
     ...v,
     rain: Number(v.time.slice(11, 13)) >= 13 ? 2 : 0,
   }));
-  assert.equal(
-    calculateOperationalWindows(forecast([h, h]), defaultRules, now).length,
-    0,
+  const result = calculateOperationalWindows(
+    forecast([h, h]),
+    defaultRules,
+    now,
   );
+  assert.equal(result.length, 1);
+  assert.equal(result[0].start.slice(11), "07:00");
+  assert.equal(result[0].end.slice(11), "13:00");
 });
 
 test("cannot concatenate favorable hours from different models into unanimous interval", () => {

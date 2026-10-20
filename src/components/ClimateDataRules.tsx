@@ -21,7 +21,12 @@ const fields: {
   step?: number;
 }[] = [
   { key: "wind", label: "Viento máximo", unit: "km/h" },
-  { key: "rain", label: "Lluvia máxima en el día", unit: "mm", step: 0.1 },
+  {
+    key: "rain",
+    label: "Lluvia máxima durante el ensayo",
+    unit: "mm",
+    step: 0.1,
+  },
   {
     key: "rain24Limit",
     label: "Lluvia del día anterior: menos de",
@@ -370,8 +375,9 @@ export default function ClimateDataRules({
                 e.preventDefault();
                 run("Guardando y recalculando", async () => {
                   await post("/api/campaign", { action: "rules", rules });
-                  await refresh("history");
-                  setMessage("Reglas guardadas y modelo recalculado.");
+                  setMessage(
+                    "Reglas guardadas. Los resultados se están recalculando automáticamente.",
+                  );
                 });
               }}
             >

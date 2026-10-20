@@ -6,12 +6,12 @@ import {
   WeatherForecast,
   Window,
 } from "./types";
-import { dayRainEligible } from "./weather-rules";
+import { previousRainEligible, windowRainEligible } from "./weather-rules";
 export const cellKey = (lat: number, lon: number) =>
   `${Math.round(lat * 4) / 4},${Math.round(lon * 4) / 4}`;
 export const rulesSignature = (r: Rules) =>
   JSON.stringify([
-    "dry-day-previous-rain-v4",
+    "dry-trial-window-previous-rain-v5",
     r.wind,
     r.rain,
     r.rain24Limit,
@@ -85,7 +85,7 @@ export function dailyCapacity(
   r: Rules,
   previous: Hour[] = [],
 ): number | null {
-  const eligible = dayRainEligible(hours, previous, r);
+  const eligible = previousRainEligible(previous, r);
   if (eligible !== true) return eligible === false ? 0 : null;
   const relevant = hours.filter(
     (h) =>
@@ -94,19 +94,33 @@ export function dailyCapacity(
   );
   if (
     relevant.length !== r.endHour - r.startHour ||
-    relevant.some((h) => h.wind === null || h.rain === null)
+    new Set(relevant.map((h) => h.time)).size !== relevant.length ||
+    relevant.some(
+      (h) =>
+        h.wind === null ||
+        !Number.isFinite(h.wind) ||
+        h.rain === null ||
+        !Number.isFinite(h.rain) ||
+        h.rain < 0,
+    )
   )
     return null;
-  let run = 0,
-    slots = 0;
-  for (const h of relevant) {
-    if (h.wind! <= r.wind && h.rain! <= r.rain) {
-      run++;
-      if (run === r.minHours) {
-        slots++;
-        run = 0;
-      }
-    } else run = 0;
+  relevant.sort((a, b) => a.time.localeCompare(b.time));
+  let slots = 0;
+  for (let i = 0; i <= relevant.length - r.minHours;) {
+    const block = relevant.slice(i, i + r.minHours);
+    const contiguous = block.every(
+      (h, j) =>
+        !j || Date.parse(h.time) - Date.parse(block[j - 1].time) === 3600000,
+    );
+    if (
+      contiguous &&
+      block.every((h) => h.wind! <= r.wind) &&
+      windowRainEligible(block, r) === true
+    ) {
+      slots++;
+      i += r.minHours;
+    } else i++;
   }
   return slots;
 }
