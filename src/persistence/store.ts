@@ -10,7 +10,12 @@ import {
 import { gzipSync, gunzipSync } from "node:zlib";
 import { replaceFile } from "./replace-file";
 import type { SeasonalAssessment } from "@/domain/seasonal";
-interface State {
+import {
+  freezePredictions,
+  ValidationArchive,
+} from "@/domain/forecast-validation";
+export interface State {
+  validationArchive?: ValidationArchive;
   pivots: Pivot[];
   rules: Rules;
   forecasts: Record<string, WeatherForecast>;
@@ -105,6 +110,11 @@ export async function mutateState(
     try {
       const state = await readState();
       await fn(state);
+      freezePredictions(
+        (state.validationArchive ??= { predictions: [], outcomes: [] }),
+        state.ensembles ?? {},
+        state.rules,
+      );
       if (db) {
         await db.appState.upsert({
           where: { id: "campaign" },

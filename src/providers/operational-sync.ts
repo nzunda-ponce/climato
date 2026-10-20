@@ -18,7 +18,12 @@ async function plan() {
         .map((p) => [cellKey(p.lat, p.lon), p]),
     ).entries(),
   ];
-  const tasks: SyncTask[] = [];
+  const tasks: SyncTask[] = [
+    {
+      label: "Archivando estimaciones para validación",
+      run: () => mutateState(() => {}),
+    },
+  ];
   const weather = state.pivots.filter(
     (p) => !locationWarning(p) && !fresh(state.forecasts[p.id]?.fetchedAt, 1),
   );

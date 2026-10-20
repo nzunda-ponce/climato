@@ -48,6 +48,8 @@ export function scenarioDayCounts(
   paths: MemberPath[],
   dates: string[],
   reference?: string,
+  measure: (path: MemberPath, dates: string[]) => number = (path, dates) =>
+    dates.filter((date) => path.days[date]! > 0).length,
 ) {
   if (!dates.length) return null;
   const families = [...new Set(paths.map((p) => p.family))];
@@ -67,7 +69,7 @@ export function scenarioDayCounts(
     for (const p of complete) {
       if (reference && p.days[reference]! <= 0) continue;
       weighted.push({
-        count: dates.filter((date) => p.days[date]! > 0).length,
+        count: measure(p, dates),
         weight: 1 / families.length / complete.length,
         family,
       });
@@ -97,6 +99,29 @@ export function scenarioDayCounts(
     completeSamples,
     availableSamples: paths.length,
   };
+}
+
+// For a selected apt reference day, measure the continuous run immediately
+// after it. Otherwise measure the longest run anywhere in the selected period.
+export function scenarioConsecutiveDays(
+  paths: MemberPath[],
+  dates: string[],
+  reference?: string,
+) {
+  return scenarioDayCounts(paths, dates, reference, (path, dates) => {
+    let run = 0,
+      longest = 0;
+    for (const date of dates) {
+      if (path.days[date]! > 0) {
+        run++;
+        longest = Math.max(longest, run);
+      } else {
+        if (reference) break;
+        run = 0;
+      }
+    }
+    return reference ? run : longest;
+  });
 }
 
 export function summarizeReportPeriod(

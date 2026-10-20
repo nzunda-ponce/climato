@@ -150,6 +150,14 @@ export function calculateOperationalWindows(
           members: available.length,
           families: families.length,
           basis: isEnsemble ? "ensemble" : "model-agreement",
+          familyEvidence: [...new Set(members.map((m) => m.family))].map(
+            (family) => ({
+              family,
+              total: members.filter((m) => m.family === family).length,
+              usable: available.filter((m) => m.family === family).length,
+              favorable: favorable.filter((m) => m.family === family).length,
+            }),
+          ),
           coverage: Math.round(coverage * 100),
           spread: Math.round(spread * 100),
           windRainAgreement: Math.round(windRainAgreement * 100),

@@ -7,8 +7,9 @@ import {
   Window,
 } from "./types";
 import { previousRainEligible, windowRainEligible } from "./weather-rules";
+// Cache and analysis key per equipment coordinate (~1 m), not a 0.25° regional cell.
 export const cellKey = (lat: number, lon: number) =>
-  `${Math.round(lat * 4) / 4},${Math.round(lon * 4) / 4}`;
+  `${Math.round(lat * 100000) / 100000},${Math.round(lon * 100000) / 100000}`;
 export const rulesSignature = (r: Rules) =>
   JSON.stringify([
     "dry-trial-window-previous-rain-v5",

@@ -3,20 +3,13 @@ import { parsePivots } from "@/domain/import";
 import { syncPivots } from "@/domain/sync-pivots";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { localDate, locationWarning } from "@/domain/types";
-import {
-  EnsoIndex,
-  ForecastGrid,
-  PUBLIC_WEATHER_BOUNDS,
-  publicGridPoints,
-} from "@/domain/seasonal";
+import { EnsoIndex } from "@/domain/seasonal";
 import { operationalSync } from "./operational-sync";
 import {
   loadEnso,
-  loadGridBatch,
   loadLongHistory,
   loadSeasonal,
   readLongCache,
-  writeLongCache,
 } from "./long-range";
 import { createSyncRunner, SyncTask } from "./sync-runner";
 
@@ -84,56 +77,6 @@ async function plan(): Promise<SyncTask[]> {
       // them into a long-running historical job would keep resolved errors visible.
     },
   });
-  const old = await readLongCache<ForecastGrid>("grid");
-  const grid: ForecastGrid =
-    old && old.start === localDate() && old.end === state.rules.deadline
-      ? { ...old, bounds: PUBLIC_WEATHER_BOUNDS, coarseStep: 2 }
-      : {
-          bounds: PUBLIC_WEATHER_BOUNDS,
-          step: 1,
-          coarseStep: 2,
-          start: localDate(),
-          end: state.rules.deadline,
-          fetchedAt: new Date().toISOString(),
-          nodes: [],
-          model: "Open-Meteo corto plazo / ECMWF EC46 / SEAS5 ensemble mean",
-          errors: [],
-        };
-  const missing = publicGridPoints().filter(
-    (p) =>
-      !grid.nodes.some(
-        (n) =>
-          n.lat === p.lat &&
-          n.lon === p.lon &&
-          Object.values(n.days).some((d) => d.wind !== null && d.rain !== null),
-      ),
-  );
-  for (let i = 0; i < missing.length; i += 8) {
-    const batch = missing.slice(i, i + 8);
-    tasks.push({
-      label: `Mapa de lluvia y viento · ${Math.min(i + 8, missing.length)}/${missing.length} puntos pendientes`,
-      run: async () => {
-        try {
-          const nodes = await loadGridBatch(batch, state.rules.deadline);
-          // Read the latest cache so automatic imports don't overwrite manual updates.
-          const latest = await readLongCache<ForecastGrid>("grid");
-          const next =
-            latest?.start === grid.start && latest.end === grid.end
-              ? latest
-              : grid;
-          next.nodes = next.nodes
-            .filter(
-              (n) => !nodes.some((p) => p.lat === n.lat && p.lon === n.lon),
-            )
-            .concat(nodes);
-          next.fetchedAt = new Date().toISOString();
-          await writeLongCache("grid", next);
-        } finally {
-          await new Promise((resolve) => setTimeout(resolve, 8000));
-        }
-      },
-    });
-  }
   for (const [key, p] of points) {
     const history = state.climate?.[key];
     const needsHistory =

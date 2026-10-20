@@ -1,3 +1,4 @@
+import { verificationSync } from "./verification-sync";
 import { autoSync } from "./auto-sync";
 import { operationalSync } from "./operational-sync";
 import { readState } from "@/persistence/store";
@@ -14,6 +15,7 @@ export function startAutoSyncScheduler() {
       const state = await readState();
       if (state.pivots.length) void operationalSync.start();
       void autoSync.start();
+      void verificationSync.start();
     } catch (e) {
       console.error(
         "Actualización automática:",
