@@ -2,10 +2,12 @@ import type { PlanningZone } from "./planning-report";
 export const availabilityRegion = (
   z: Pick<PlanningZone, "regions" | "provinces" | "fields">,
 ) =>
-  z.regions.join(" / ") ||
-  z.provinces.join(" / ") ||
-  z.fields.join(" / ") ||
-  "Sin zona asignada";
+  (
+    z.regions.join(" / ") ||
+    z.provinces.join(" / ") ||
+    z.fields.join(" / ") ||
+    "Sin zona asignada"
+  ).replace(/\bOESTE\b/g, "Oeste");
 export interface AvailabilityCell {
   expected: number | null;
   probability: number | null;
@@ -82,10 +84,49 @@ export function availabilityColor(probability: number | null) {
       })
       .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
   const bg = luminance(rgb),
-    dark = luminance([24, 54, 46]);
+    dark = luminance([0, 0, 0]);
   return {
     backgroundColor: `rgb(${rgb.join(", ")})`,
     color:
-      1.05 / (bg + 0.05) > (bg + 0.05) / (dark + 0.05) ? "#ffffff" : "#18362e",
+      1.05 / (bg + 0.05) > (bg + 0.05) / (dark + 0.05) ? "#ffffff" : "#000000",
   };
+}
+export function availabilityBacking(cell: AvailabilityCell) {
+  const sources = Object.keys(cell.sources);
+  return !sources.length
+    ? "Sin datos"
+    : sources.length > 1
+      ? "Mixto"
+      : sources[0] === "histórico"
+        ? "Historia"
+        : sources[0] === "pronóstico"
+          ? "Pronóstico"
+          : "Proyección";
+}
+// Rank only actual forecast days. Historical frequency cannot announce a date.
+export function bestForecastDay(zones: PlanningZone[], dates: string[]) {
+  return dates
+    .map((date) => {
+      const covered = zones.filter((z) =>
+        z.outlook.some(
+          (d) =>
+            d.date === date &&
+            d.source === "pronóstico" &&
+            d.probability !== null,
+        ),
+      );
+      return {
+        date,
+        locations: covered.length,
+        total: zones.length,
+        cell: availabilityCell(covered, [date]),
+      };
+    })
+    .filter((d) => d.locations > 0)
+    .sort(
+      (a, b) =>
+        b.locations - a.locations ||
+        b.cell.probability! - a.cell.probability! ||
+        a.date.localeCompare(b.date),
+    )[0];
 }

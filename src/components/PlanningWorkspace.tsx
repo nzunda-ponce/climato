@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlanningReport, PlanningZone } from "@/domain/planning-report";
 import type { confusionReport } from "@/domain/forecast-validation";
 import type { Rules } from "@/domain/types";
@@ -10,11 +10,17 @@ import {
   missingForecastLabel,
 } from "@/domain/planning-summary";
 import AvailabilityOverview from "./AvailabilityOverview";
-import { availabilityRegion } from "@/domain/availability-matrix";
+import {
+  availabilityRegion,
+  availabilityBacking,
+  availabilityCell,
+} from "@/domain/availability-matrix";
+import { matchesLocation, nearbyReference } from "@/domain/location-label";
 import StorageStatus from "./StorageStatus";
 import AutoSyncStatus from "./AutoSyncStatus";
 import "./planning.css";
 import "./availability.css";
+import "./ux-refinement.css";
 
 type Verification = ReturnType<typeof confusionReport>;
 const number = (v: number | null | undefined, digits = 1) =>
@@ -66,6 +72,22 @@ export default function PlanningWorkspace() {
     [error, setError] = useState("");
   const [selected, setSelected] = useState<string[] | null>(null),
     [search, setSearch] = useState("");
+  const [undoSelection, setUndoSelection] = useState<string[] | null>(null);
+  const [overviewMode, setOverviewMode] = useState<"days" | "weeks">("days");
+  const [showWholeZone, setShowWholeZone] = useState(false);
+  const detailRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("climato-overview-mode") === "weeks")
+        setOverviewMode("weeks");
+    } catch {}
+  }, []);
+  const changeOverviewMode = (mode: "days" | "weeks") => {
+    setOverviewMode(mode);
+    try {
+      sessionStorage.setItem("climato-overview-mode", mode);
+    } catch {}
+  };
   const [horizon, setHorizon] = useState<7 | 14>(7),
     [threshold, setThreshold] = useState(70),
     [lead, setLead] = useState(1);
@@ -103,7 +125,9 @@ export default function PlanningWorkspace() {
   }, [report]);
   useEffect(() => {
     if (selected !== null)
-      localStorage.setItem(selectionKey, JSON.stringify(selected));
+      try {
+        localStorage.setItem(selectionKey, JSON.stringify(selected));
+      } catch {}
   }, [selected]);
   const keys = useMemo(
     () =>
@@ -148,8 +172,39 @@ export default function PlanningWorkspace() {
   }, [report]);
   const dates = zones[0]?.daily.slice(0, horizon).map((d) => d.date) ?? [];
   const focus = zones.find((z) => z.key === focused) ?? zones[0];
+  const detailZones = focus
+    ? showWholeZone
+      ? zones.filter((z) => group(z) === group(focus))
+      : [focus]
+    : [];
+  useEffect(() => {
+    if (view !== "detalle" || !focus) return;
+    const frame = requestAnimationFrame(() => {
+      detailRef.current?.focus({ preventScroll: true });
+      detailRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "instant",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view, focused, selectedDate, focus?.key]);
+  const weatherDates = zones
+    .flatMap((z) => (z.sources.ensembleAt ? [z.sources.ensembleAt] : []))
+    .sort();
+  const selectedOutlook = focus?.outlook.find((d) => d.date === selectedDate);
   const detailDay =
-    focus?.daily.find((d) => d.date === selectedDate) ?? focus?.daily[0];
+    focus?.daily.find((d) => d.date === selectedDate) ??
+    (selectedOutlook
+      ? {
+          ...focus!.daily[0],
+          ...selectedOutlook,
+          supported: selectedOutlook.probability !== null,
+          windows: [],
+          evidence: [],
+          following: null,
+          followingConsecutive: null,
+        }
+      : focus?.daily[0]);
   const sourceAt = !focus
     ? null
     : detailDay?.source === "histórico"
@@ -159,18 +214,19 @@ export default function PlanningWorkspace() {
         ? focus.sources.seasonalAt
         : focus.sources.ensembleAt;
   const summaryField = horizon === 7 ? "next7" : "next14";
-  const estimates = zones
+  const analysisZones = view === "detalle" ? detailZones : zones;
+  const estimates = analysisZones
     .map((z) => locationDayEstimate(z, dates))
     .filter((e) => e.covered > 0);
-  const globalDays = globalDailyEstimates(zones, dates);
-  const globalWeeks = globalWeeklyEstimates(zones);
+  const globalDays = globalDailyEstimates(analysisZones, dates);
+  const globalWeeks = globalWeeklyEstimates(analysisZones);
   const average = estimates.length
     ? estimates.reduce((sum, e) => sum + e.expected!, 0) / estimates.length
     : null;
   const coverageDays = estimates.length
     ? estimates.reduce((sum, e) => sum + e.covered, 0) / estimates.length
     : 0;
-  const daysAbove = zones.reduce(
+  const daysAbove = analysisZones.reduce(
     (s, z) =>
       s +
       z.daily
@@ -183,14 +239,22 @@ export default function PlanningWorkspace() {
         ).length,
     0,
   );
-  const toggle = (ids: string[], enabled: boolean) =>
+  const visibleKeys = (report?.zones ?? [])
+    .filter((z) => matchesLocation(z, search, group(z)))
+    .map((z) => z.key);
+  const toggle = (ids: string[], enabled: boolean) => {
+    setUndoSelection(selected);
     setSelected((current) =>
       enabled
         ? [...new Set([...(current ?? []), ...ids])]
         : (current ?? []).filter((k) => !ids.includes(k)),
     );
+  };
   return (
     <div className="planning-app">
+      <a className="planning-skip" href="#main-content">
+        Saltar al contenido
+      </a>
       <header className="planning-header">
         <a href="/" className="planning-brand">
           climato<span>Planificación de uniformidades</span>
@@ -210,7 +274,7 @@ export default function PlanningWorkspace() {
           )}
         </nav>
       </header>
-      <main className="planning-main">
+      <main className="planning-main" id="main-content" tabIndex={-1}>
         <section className="planning-intro">
           <div>
             <p className="planning-eyebrow">
@@ -228,22 +292,42 @@ export default function PlanningWorkspace() {
             </p>
           </div>
           <div className="planning-updated">
-            Actualizado
+            Informe publicado
             <br />
             <strong>
               {report
-                ? new Date(report.computedAt).toLocaleString("es-AR", {
+                ? new Date(
+                    report.publication?.at ?? report.computedAt,
+                  ).toLocaleString("es-AR", {
                     timeZone: "America/Argentina/Buenos_Aires",
                     dateStyle: "short",
                     timeStyle: "short",
                   })
-                : "Cargando…"}
+                : error
+                  ? "Sin publicación disponible"
+                  : "Cargando…"}
             </strong>
             <span>Hora de Argentina</span>
+            {weatherDates.length > 0 && (
+              <span className="planning-data-age">
+                Pronósticos descargados:{" "}
+                {new Date(weatherDates[0]).toLocaleString("es-AR", {
+                  timeZone: "America/Argentina/Buenos_Aires",
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {weatherDates[0] !== weatherDates.at(-1)
+                  ? `–${new Date(weatherDates.at(-1)!).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+              </span>
+            )}
+            <span>Actualizaciones previstas: 07:17 y 19:17 · Argentina</span>
             {view === "datos" && <StorageStatus />}
           </div>
         </section>
-        {error && (
+        {error && (view !== "resumen" || report) && (
           <div className="planning-alert" role="alert">
             {error}{" "}
             <button
@@ -334,15 +418,43 @@ export default function PlanningWorkspace() {
                 />
               </label>
               <div className="planning-selection-actions">
-                <button
-                  onClick={() =>
-                    setSelected(report?.zones.map((z) => z.key) ?? [])
-                  }
-                >
-                  Seleccionar todas
+                <button onClick={() => toggle(visibleKeys, true)}>
+                  {search ? "Seleccionar resultados" : "Seleccionar todas"}
                 </button>
-                <button onClick={() => setSelected([])}>Quitar todas</button>
+                <button onClick={() => toggle(visibleKeys, false)}>
+                  {search ? "Quitar resultados" : "Quitar todas"}
+                </button>
+                {undoSelection && (
+                  <button
+                    onClick={() => {
+                      setSelected(undoSelection);
+                      setUndoSelection(null);
+                    }}
+                  >
+                    Deshacer selección
+                  </button>
+                )}
               </div>
+              <p className="planning-selection-scope">
+                {zones.length} ubicaciones incluidas en el análisis. Las
+                casillas de grupo afectan sólo los resultados visibles cuando
+                buscás.
+              </p>
+              {search &&
+                !groups.some(([name, items]) =>
+                  items.some((z) => matchesLocation(z, search, name)),
+                ) && (
+                  <div className="planning-empty" role="status">
+                    <strong>No encontramos ubicaciones para «{search}»</strong>
+                    <p>
+                      Probá con un equipo, campo, provincia o referencia
+                      cercana.
+                    </p>
+                    <button onClick={() => setSearch("")}>
+                      Limpiar búsqueda
+                    </button>
+                  </div>
+                )}
               {!report ? (
                 <p>Cargando ubicaciones…</p>
               ) : !report.zones.length ? (
@@ -353,36 +465,31 @@ export default function PlanningWorkspace() {
               ) : (
                 groups.map(([name, items]) => {
                   const visible = items.filter((z) =>
-                    [
-                      name,
-                      ...z.equipment.map((e) => e.name),
-                      ...z.fields,
-                      z.key,
-                    ]
-                      .join(" ")
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
+                    matchesLocation(z, search, name),
                   );
                   if (!visible.length) return null;
-                  const count = items.filter((z) =>
+                  const count = visible.filter((z) =>
                     keys.includes(z.key),
                   ).length;
                   return (
-                    <details key={name} open={!!search || groups.length < 5}>
+                    <details
+                      key={`${name}-${Boolean(search)}`}
+                      open={search ? true : undefined}
+                    >
                       <summary>
                         <input
                           type="checkbox"
-                          aria-label={`Incluir zona ${name}`}
-                          checked={count === items.length}
+                          aria-label={`Incluir zona ${name}${search ? " · resultados visibles" : ""}`}
+                          checked={count === visible.length}
                           ref={(el) => {
                             if (el)
                               el.indeterminate =
-                                count > 0 && count < items.length;
+                                count > 0 && count < visible.length;
                           }}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) =>
                             toggle(
-                              items.map((z) => z.key),
+                              visible.map((z) => z.key),
                               e.target.checked,
                             )
                           }
@@ -390,8 +497,9 @@ export default function PlanningWorkspace() {
                         <span>
                           {name}
                           <small>
-                            {count}/{items.length} ubicaciones ·{" "}
-                            {items.reduce((s, z) => s + z.pending, 0)} equipos
+                            {count}/{visible.length}{" "}
+                            {search ? "resultados visibles" : "ubicaciones"} ·{" "}
+                            {visible.reduce((s, z) => s + z.pending, 0)} equipos
                           </small>
                         </span>
                       </summary>
@@ -408,9 +516,12 @@ export default function PlanningWorkspace() {
                             <span>
                               {z.equipment.map((e) => e.name).join(" / ")}
                               <small>
-                                {z.fields.join(" / ")} · {z.lat.toFixed(4)},{" "}
-                                {z.lon.toFixed(4)}
+                                {z.fields.join(" / ")} ·{" "}
+                                {z.provinces.join(" / ")}
                               </small>
+                              {nearbyReference(z) && (
+                                <small>{nearbyReference(z)}</small>
+                              )}
                             </span>
                           </label>
                         ))}
@@ -429,6 +540,12 @@ export default function PlanningWorkspace() {
                 Desmarcar una zona la excluye de todas las estadísticas y
                 tablas. Se conserva tu selección en este navegador.
               </p>
+              <button
+                className="planning-selection-done"
+                onClick={() => navigate("resumen")}
+              >
+                Ver análisis · {zones.length} ubicaciones
+              </button>
             </aside>
           )}
           <div className="planning-content">
@@ -437,9 +554,14 @@ export default function PlanningWorkspace() {
                 report={report}
                 zones={zones}
                 onZones={() => navigate("zonas")}
+                mode={overviewMode}
+                onMode={changeOverviewMode}
+                error={error}
+                onRetry={() => void load().catch((e) => setError(e.message))}
                 onDetail={(key, date) => {
                   setFocused(key);
                   setSelectedDate(date);
+                  setShowWholeZone(false);
                   navigate("detalle");
                 }}
               />
@@ -483,6 +605,48 @@ export default function PlanningWorkspace() {
                     </label>
                   </div>
                 </div>
+                <div className="planning-location-toolbar">
+                  <label>
+                    Fecha
+                    <input
+                      aria-label="Fecha del detalle"
+                      type="date"
+                      value={selectedDate || focus?.daily[0]?.date || ""}
+                      min={report?.start}
+                      max={report?.deadline}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                    />
+                  </label>
+                  <button onClick={() => navigate("resumen")}>
+                    ← Volver a disponibilidad
+                  </button>
+                  <label>
+                    Ubicación
+                    <select
+                      aria-label="Ubicación del detalle"
+                      value={focus?.key ?? ""}
+                      onChange={(e) => {
+                        setFocused(e.target.value);
+                        setShowWholeZone(false);
+                      }}
+                    >
+                      {zones.map((z) => (
+                        <option key={z.key} value={z.key}>
+                          {group(z)} · {z.fields.join(" / ")} ·{" "}
+                          {z.equipment.map((e) => e.name).join(" / ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    aria-pressed={showWholeZone}
+                    onClick={() => setShowWholeZone((v) => !v)}
+                  >
+                    {showWholeZone
+                      ? "Ver sólo esta ubicación"
+                      : "Comparar ubicaciones de esta zona"}
+                  </button>
+                </div>
                 {!zones.length ? (
                   <div className="planning-empty">
                     Seleccioná al menos una zona para generar el análisis.
@@ -492,13 +656,15 @@ export default function PlanningWorkspace() {
                     <div className="planning-stats">
                       <Stat
                         label="Equipos seleccionados"
-                        value={String(zones.reduce((s, z) => s + z.pending, 0))}
-                        note={`${zones.length} ubicaciones analizadas individualmente`}
+                        value={String(
+                          analysisZones.reduce((s, z) => s + z.pending, 0),
+                        )}
+                        note={`${analysisZones.length} ubicaciones analizadas individualmente`}
                       />
                       <Stat
                         label="Días previstos por ubicación · fechas analizadas"
                         value={number(average)}
-                        note={`${estimates.length}/${zones.length} ubicaciones con datos · ${number(coverageDays)}/${dates.length} fechas analizadas en promedio. No extrapola los días pendientes.`}
+                        note={`${estimates.length}/${analysisZones.length} ubicaciones con datos · ${number(coverageDays)}/${dates.length} fechas analizadas en promedio. No extrapola los días pendientes.`}
                       />
                       <Stat
                         label={`Ubicación-días con probabilidad ≥ ${threshold}%`}
@@ -533,11 +699,17 @@ export default function PlanningWorkspace() {
                                 : `${number(w.expected)} días`}
                             </strong>
                             <small>
-                              {w.historical
-                                ? w.forecast
-                                  ? "Pronóstico + historia"
-                                  : "Base histórica"
-                                : "Pronóstico"}
+                              {availabilityBacking(
+                                availabilityCell(
+                                  analysisZones,
+                                  analysisZones[0]?.outlook
+                                    .filter(
+                                      (d) =>
+                                        d.date >= w.start && d.date <= w.end,
+                                    )
+                                    .map((d) => d.date) ?? [],
+                                ),
+                              )}
                             </small>
                             <small>
                               {w.covered}/{w.total} ubicaciones
@@ -565,7 +737,7 @@ export default function PlanningWorkspace() {
                               </tr>
                             </thead>
                             <tbody>
-                              {zones.map((z) => (
+                              {detailZones.map((z) => (
                                 <tr key={z.key}>
                                   <th>
                                     {group(z)}
@@ -583,11 +755,18 @@ export default function PlanningWorkspace() {
                                           : `${number(w.expectedDays ?? w.partialExpectedDays)} días`}
                                       </strong>
                                       <small>
-                                        {w.historicalDays
-                                          ? w.historicalDays === w.total
-                                            ? "Base histórica"
-                                            : "Pronóstico + historia"
-                                          : "Pronóstico"}{" "}
+                                        {availabilityBacking(
+                                          availabilityCell(
+                                            [z],
+                                            z.outlook
+                                              .filter(
+                                                (d) =>
+                                                  d.date >= w.start &&
+                                                  d.date <= w.end,
+                                              )
+                                              .map((d) => d.date),
+                                          ),
+                                        )}{" "}
                                         · {w.covered}/{w.total} fechas
                                       </small>
                                       {w.historicalReference && (
@@ -639,9 +818,9 @@ export default function PlanningWorkspace() {
                               {d.covered}/{d.total} ubicaciones analizadas
                             </small>
                             <small>
-                              {d.historical
-                                ? `${d.historical} con base histórica`
-                                : "Pronóstico"}
+                              {availabilityBacking(
+                                availabilityCell(analysisZones, [d.date]),
+                              )}
                             </small>
                           </div>
                         ))}
@@ -669,7 +848,7 @@ export default function PlanningWorkspace() {
                           </tr>
                         </thead>
                         <tbody>
-                          {zones.map((z) => {
+                          {detailZones.map((z) => {
                             const distribution = z[summaryField].scenarios;
                             const estimate = locationDayEstimate(z, dates);
                             return (
@@ -765,15 +944,25 @@ export default function PlanningWorkspace() {
                       </table>
                     </div>
                     {focus && detailDay && (
-                      <section className="planning-detail">
+                      <section
+                        className="planning-detail"
+                        ref={detailRef}
+                        tabIndex={-1}
+                        aria-label="Detalle de la ubicación seleccionada"
+                      >
                         <div className="planning-panel-title">
                           <div>
                             <h3>
                               {group(focus)} · {date(detailDay.date)}
                             </h3>
                             <p>
-                              {focus.equipment.map((e) => e.name).join(" / ")} ·{" "}
-                              {focus.lat.toFixed(5)}, {focus.lon.toFixed(5)}
+                              {[
+                                focus.equipment.map((e) => e.name).join(" / "),
+                                focus.fields.join(" / "),
+                                nearbyReference(focus),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </p>
                           </div>
                           <strong className="planning-probability">
@@ -943,6 +1132,20 @@ export default function PlanningWorkspace() {
                   criterios y umbral ({threshold}%) del análisis. ERA5 es una
                   referencia meteorológica, no una medición del ensayo en campo.
                 </p>
+                <label className="planning-validation-threshold">
+                  Umbral de clasificación
+                  <select
+                    aria-label="Umbral de validación"
+                    value={threshold}
+                    onChange={(e) => setThreshold(Number(e.target.value))}
+                  >
+                    {[50, 60, 70, 80, 90, 95].map((v) => (
+                      <option key={v} value={v}>
+                        {v}%
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 {verifyError && <p role="alert">{verifyError}</p>}
                 {!verification && !verifyError ? (
                   <p>Consultando registros…</p>
@@ -974,66 +1177,70 @@ export default function PlanningWorkspace() {
                           </p>
                         </div>
                       )}
-                      <div className="planning-validation-grid">
-                        <table className="planning-confusion">
-                          <caption>
-                            Pronóstico frente a referencia meteorológica
-                          </caption>
-                          <thead>
-                            <tr>
-                              <th></th>
-                              <th scope="col">Referencia: apto</th>
-                              <th scope="col">Referencia: no apto</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <th scope="row">Pronóstico ≥ {threshold}%</th>
-                              <td className="correct">
-                                {verification.count ? verification.tp : "—"}
-                                <small>Aciertos aptos</small>
-                              </td>
-                              <td className="wrong">
-                                {verification.count ? verification.fp : "—"}
-                                <small>Falsas alarmas</small>
-                              </td>
-                            </tr>
-                            <tr>
-                              <th scope="row">Pronóstico &lt; {threshold}%</th>
-                              <td className="wrong">
-                                {verification.count ? verification.fn : "—"}
-                                <small>Días aptos no detectados</small>
-                              </td>
-                              <td className="correct">
-                                {verification.count ? verification.tn : "—"}
-                                <small>Aciertos no aptos</small>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                        <div className="planning-metrics">
-                          <Stat
-                            label="Acierto global"
-                            value={percent(verification.accuracy)}
-                            note="Proporción de clasificaciones correctas"
-                          />
-                          <Stat
-                            label="Precisión de los días clasificados aptos"
-                            value={percent(verification.precision)}
-                            note="De los anunciados aptos, cuántos lo fueron"
-                          />
-                          <Stat
-                            label="Detección de días aptos"
-                            value={percent(verification.recall)}
-                            note="De los días aptos, cuántos detectamos"
-                          />
-                          <Stat
-                            label="Error probabilístico · Brier"
-                            value={number(verification.brier, 3)}
-                            note="0 es perfecto; 1 es el error máximo"
-                          />
+                      {verification.count > 0 && (
+                        <div className="planning-validation-grid">
+                          <table className="planning-confusion">
+                            <caption>
+                              Pronóstico frente a referencia meteorológica
+                            </caption>
+                            <thead>
+                              <tr>
+                                <th></th>
+                                <th scope="col">Referencia: apto</th>
+                                <th scope="col">Referencia: no apto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <th scope="row">Pronóstico ≥ {threshold}%</th>
+                                <td className="correct">
+                                  {verification.count ? verification.tp : "—"}
+                                  <small>Aciertos aptos</small>
+                                </td>
+                                <td className="wrong">
+                                  {verification.count ? verification.fp : "—"}
+                                  <small>Falsas alarmas</small>
+                                </td>
+                              </tr>
+                              <tr>
+                                <th scope="row">
+                                  Pronóstico &lt; {threshold}%
+                                </th>
+                                <td className="wrong">
+                                  {verification.count ? verification.fn : "—"}
+                                  <small>Días aptos no detectados</small>
+                                </td>
+                                <td className="correct">
+                                  {verification.count ? verification.tn : "—"}
+                                  <small>Aciertos no aptos</small>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <div className="planning-metrics">
+                            <Stat
+                              label="Acierto global"
+                              value={percent(verification.accuracy)}
+                              note="Proporción de clasificaciones correctas"
+                            />
+                            <Stat
+                              label="Precisión de los días clasificados aptos"
+                              value={percent(verification.precision)}
+                              note="De los anunciados aptos, cuántos lo fueron"
+                            />
+                            <Stat
+                              label="Detección de días aptos"
+                              value={percent(verification.recall)}
+                              note="De los días aptos, cuántos detectamos"
+                            />
+                            <Stat
+                              label="Error probabilístico · Brier"
+                              value={number(verification.brier, 3)}
+                              note="0 es perfecto; 1 es el error máximo"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
                       {verification.count > 0 && (
                         <details>
                           <summary>
@@ -1142,7 +1349,7 @@ export default function PlanningWorkspace() {
                       </tr>
                     </thead>
                     <tbody>
-                      {zones.map((z) => (
+                      {detailZones.map((z) => (
                         <tr key={z.key}>
                           <th>
                             {group(z)} ·{" "}

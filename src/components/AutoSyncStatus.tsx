@@ -49,7 +49,7 @@ export default function AutoSyncStatus({
       }
     };
     void poll();
-    const timer = setInterval(() => void poll(), 5000);
+    const timer = setInterval(() => void poll(), 60000);
     return () => {
       disposed = true;
       clearInterval(timer);
@@ -72,6 +72,19 @@ export default function AutoSyncStatus({
       <strong>
         {error || status?.message || "Iniciando carga automática…"}
       </strong>
+      <p>
+        Actualizaciones previstas: 07:17 y 19:17, hora argentina. Si el
+        proveedor limita las consultas, se conserva el informe anterior.
+      </p>
+      {status?.updatedAt && (
+        <p>
+          Último intento del proceso:{" "}
+          {new Date(status.updatedAt).toLocaleString("es-AR", {
+            timeZone: "America/Argentina/Buenos_Aires",
+          })}
+          .
+        </p>
+      )}
       {status?.running && (
         <span>
           {status.completed}/{status.total || "—"} pasos procesados. Podés
@@ -87,7 +100,7 @@ export default function AutoSyncStatus({
       {!!status?.errors.length && (
         <details>
           <summary>
-            {status.errors.length} fuentes pendientes de reintento
+            {status.errors.length} incidencias pendientes de reintento
           </summary>
           <ul>
             {status.errors.map((e, i) => (

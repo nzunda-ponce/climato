@@ -1,0 +1,532 @@
+/* Readable results, explicit context, and a short path from a region to a trial. */
+.planning-app {
+  --muted: #4d6258;
+}
+.planning-app [hidden] {
+  display: none !important;
+}
+.planning-skip {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 100;
+  padding: 12px;
+  background: white;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.planning-skip:focus {
+  top: 8px;
+  clip-path: none;
+  width: auto;
+  height: auto;
+}
+.planning-header nav a {
+  font-size: 13px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.planning-updated {
+  max-width: 420px;
+  line-height: 1.6;
+}
+.planning-updated > span {
+  display: block;
+  font-size: 12px;
+}
+.planning-intro p {
+  color: #4d6258;
+}
+.planning-app button,
+.planning-app select {
+  min-height: 40px;
+}
+.planning-app .availability-summary-head button,
+.planning-app .availability-table-note button {
+  min-height: 44px;
+  padding: 6px;
+  font-size: 13px;
+  white-space: normal;
+}
+.availability-summary-head .planning-eyebrow {
+  font-size: 12px;
+}
+.availability-summary p,
+.availability-summary small,
+.availability-map-foot,
+.availability-map-header strong > span,
+.availability-legend,
+.availability-table-note,
+.availability-cell-detail p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.availability-primary-stat strong small {
+  color: #425f50;
+}
+.availability-secondary-stat > div > span {
+  font-size: 12px;
+}
+.availability-map-header {
+  flex-wrap: wrap;
+}
+.planning-app .availability-map-header select {
+  font-size: 13px;
+  max-width: 200px;
+}
+.availability-map-foot {
+  flex-wrap: wrap;
+}
+.availability-map-foot a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+}
+.availability-map-toggle {
+  display: none;
+}
+.availability-mobile-total {
+  display: none !important;
+}
+.availability-zone-outlook > p {
+  color: var(--muted);
+  max-width: 900px;
+}
+.availability-zone-outlook {
+  order: 2;
+}
+.availability-matrix-panel {
+  order: 1;
+}
+.availability-print-criteria {
+  order: 4;
+}
+.availability-zone-outlook > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.availability-zone-outlook article {
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.availability-zone-outlook h2 {
+  font-size: 20px;
+  margin: 0;
+}
+.availability-zone-outlook h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+.availability-zone-outlook article > strong {
+  color: #215f45;
+  font-size: 21px;
+}
+.availability-zone-outlook article p {
+  font-size: 13px;
+  color: var(--muted);
+}
+.availability-zone-outlook article button {
+  margin-top: auto;
+}
+.planning-app .availability-table thead th {
+  font-size: 12px;
+}
+.planning-app .availability-table th:first-child {
+  width: 170px;
+}
+.planning-app .availability-table small {
+  font-size: 11px;
+  opacity: 1;
+}
+.planning-app .availability-table tbody th small {
+  font-size: 12px;
+}
+.planning-app .availability-table tbody th button {
+  min-height: 44px;
+}
+.planning-app .availability-cell {
+  font-size: 14px;
+  min-height: 72px;
+  padding: 9px 3px;
+}
+.planning-app .availability-cell:hover {
+  filter: none;
+  outline: 2px solid #193e31;
+  outline-offset: -2px;
+}
+.planning-app .availability-cell.partial {
+  background-image: none;
+  border-style: dashed;
+  border-color: currentColor;
+}
+.planning-app .availability-backing {
+  display: block;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 400;
+}
+.availability-cell-dialog {
+  border: 1px solid #bbcfc4;
+  border-radius: 16px;
+  width: min(650px, calc(100% - 32px));
+  max-height: 85dvh;
+  padding: 24px;
+  color: #203b33;
+  background: #fff;
+  box-shadow: 0 24px 90px #102c3840;
+}
+.availability-cell-dialog::backdrop {
+  background: #102c3870;
+}
+.availability-cell-dialog:not([open]) {
+  display: none;
+}
+.availability-cell-dialog .availability-cell-detail {
+  display: block;
+  font-size: 15px;
+}
+.availability-cell-dialog h2 {
+  font-size: 22px;
+  margin-top: 0;
+}
+.availability-cell-dialog p {
+  font-size: 14px;
+}
+.availability-cell-dialog button {
+  margin-top: 16px;
+  min-height: 44px;
+}
+.planning-app .availability-switch button {
+  min-height: 44px;
+  font-size: 14px;
+  color: #354f43;
+}
+.availability-print-criteria {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  padding: 12px 0;
+}
+.planning-selection-actions {
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: white;
+  padding-block: 8px;
+}
+.planning-selection-scope {
+  color: var(--muted);
+  font-size: 13px;
+}
+.planning-selection details {
+  margin-block: 10px;
+}
+.planning-selection summary {
+  padding-block: 12px;
+}
+.planning-selection summary input,
+.planning-selection label input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.planning-app .planning-selection-done {
+  position: sticky;
+  bottom: 12px;
+  width: 100%;
+  min-height: 48px;
+  background: #215f45;
+  color: white;
+  margin-top: 20px;
+  box-shadow: 0 3px 16px #203b3320;
+}
+.planning-analysis {
+  display: flex;
+  flex-direction: column;
+}
+.planning-analysis > * {
+  order: 4;
+}
+.planning-analysis > .planning-panel-title {
+  order: 0;
+}
+.planning-location-toolbar {
+  order: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  margin-block: 12px 22px;
+}
+.planning-location-toolbar label {
+  flex: 1;
+  min-width: 0;
+}
+.planning-location-toolbar select {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+.planning-analysis > .planning-detail {
+  order: 2;
+  scroll-margin-top: 16px;
+  margin-bottom: 24px;
+  border: 2px solid #bdd4c7;
+  border-radius: 12px;
+  padding: 22px;
+  background: #f5faf7;
+}
+.planning-detail h4 {
+  font-size: 15px;
+}
+.planning-detail p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.planning-validation-threshold {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.planning-footer {
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .availability-zone-outlook > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .planning-header {
+    align-items: stretch;
+  }
+  .planning-header nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    gap: 3px;
+    width: 100%;
+  }
+  .planning-header nav a {
+    font-size: 12px;
+    white-space: normal;
+    justify-content: center;
+    text-align: center;
+    padding: 6px;
+  }
+  .planning-intro h1 {
+    font-size: 23px;
+  }
+  .planning-updated {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  .planning-updated > span {
+    display: block;
+    font-size: 11px;
+  }
+  .planning-updated .planning-data-age {
+    display: none;
+  }
+  .availability-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .availability-top {
+    display: contents;
+  }
+  .availability-summary {
+    order: 0;
+    padding: 16px;
+  }
+  .availability-matrix-panel {
+    order: 1;
+  }
+  .availability-zone-outlook {
+    order: 2;
+  }
+  .availability-map {
+    order: 3;
+  }
+  .availability-print-criteria {
+    order: 4;
+  }
+  .availability-map-toggle {
+    display: block;
+    margin: 0 12px 12px;
+  }
+  .availability-map iframe {
+    display: none;
+  }
+  .availability-map.map-open iframe {
+    display: block;
+  }
+  .availability-map-header > div {
+    flex-wrap: wrap;
+  }
+  .availability-map-foot {
+    font-size: 12px;
+  }
+  .availability-summary-head {
+    flex-wrap: wrap;
+  }
+  .availability-summary-head .planning-eyebrow {
+    font-size: 11px;
+  }
+  .availability-primary-stat {
+    padding: 4px 0 12px;
+  }
+  .availability-primary-stat > strong {
+    font-size: 44px;
+  }
+  .availability-primary-stat p {
+    font-size: 13px;
+  }
+  .availability-best-day {
+    padding: 12px 0;
+  }
+  .availability-best-day small {
+    font-size: 12px;
+  }
+  .availability-zone-outlook > div {
+    grid-template-columns: 1fr;
+  }
+  .availability-matrix-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .availability-matrix-heading p {
+    max-width: none;
+    font-size: 12px;
+  }
+  .availability-legend {
+    gap: 10px;
+    font-size: 12px;
+  }
+  .planning-app .availability-table th:first-child {
+    width: 135px;
+    padding: 8px;
+  }
+  .planning-app .availability-table {
+    min-width: 1120px;
+  }
+  .planning-app .availability-table tbody th small {
+    font-size: 11px;
+  }
+  .availability-mobile-total {
+    display: block !important;
+    font-weight: 700 !important;
+    margin-top: 4px;
+  }
+  .availability-table-note {
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .planning-location-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .planning-app .planning-detail {
+    padding: 14px;
+  }
+  .planning-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .planning-validation-threshold {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planning-app * {
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  .planning-main {
+    padding: 10px 14px;
+  }
+  .planning-header {
+    padding: 10px 14px;
+  }
+  .planning-intro {
+    margin-bottom: 10px;
+  }
+  .planning-intro h1 {
+    font-size: 20px;
+  }
+  .availability-summary {
+    padding: 12px 16px;
+  }
+  .availability-primary-stat {
+    padding: 6px 0;
+  }
+  .availability-primary-stat > strong {
+    font-size: 34px;
+  }
+  .availability-summary p,
+  .availability-summary small {
+    font-size: 9px;
+    line-height: 1.4;
+  }
+  .availability-best-day {
+    padding: 7px 0;
+  }
+  .availability-secondary-stat {
+    padding: 8px 0;
+  }
+  .planning-app .availability-cell {
+    min-height: 32px;
+    padding: 3px 1px;
+    font-size: 9px;
+  }
+  .planning-app .availability-table thead th {
+    font-size: 9px;
+    padding: 5px 2px;
+  }
+  .planning-app .availability-table tbody th small {
+    font-size: 8px;
+  }
+  .planning-app .availability-table tbody th button {
+    min-height: 20px;
+    font-size: 10px;
+  }
+  .availability-table-note {
+    font-size: 9px;
+  }
+  .planning-footer {
+    font-size: 9px;
+  }
+  .planning-skip,
+  .availability-cell-dialog,
+  .planning-location-toolbar,
+  .availability-zone-outlook,
+  .planning-selection-done {
+    display: none !important;
+  }
+  .availability-top {
+    display: block;
+  }
+  .availability-backing {
+    font-size: 7px !important;
+  }
+  .availability-print-criteria {
+    display: block;
+    font-size: 9px;
+  }
+  .planning-updated > span {
+    font-size: 9px;
+  }
+}

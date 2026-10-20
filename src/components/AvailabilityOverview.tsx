@@ -1,11 +1,13 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { PlanningReport, PlanningZone } from "@/domain/planning-report";
 import {
   availabilityCell,
   availabilityColor,
   availabilityGroups,
+  availabilityBacking,
+  bestForecastDay,
   type AvailabilityCell,
 } from "@/domain/availability-matrix";
 const number = (v: number | null) =>
@@ -34,19 +36,31 @@ export default function AvailabilityOverview({
   zones,
   onZones,
   onDetail,
+  mode,
+  onMode,
+  error,
+  onRetry,
 }: {
   report: PlanningReport | null;
   zones: PlanningZone[];
   onZones: () => void;
   onDetail: (key: string, date: string) => void;
+  mode: "days" | "weeks";
+  onMode: (mode: "days" | "weeks") => void;
+  error: string;
+  onRetry: () => void;
 }) {
-  const [mode, setMode] = useState<"days" | "weeks">("days");
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const [mapRegion, setMapRegion] = useState("");
   const [overlay, setOverlay] = useState("wind");
   const [active, setActive] = useState<{
     region: string;
     start: string;
   } | null>(null);
+  useEffect(() => {
+    if (active && !dialog.current?.open) dialog.current?.showModal();
+  }, [active]);
   const groups = useMemo(() => availabilityGroups(zones), [zones]);
   const days = zones[0]?.outlook.slice(0, 14).map((d) => d.date) ?? [];
   const periods =
@@ -71,10 +85,9 @@ export default function AvailabilityOverview({
     zones,
     zones[0]?.outlook.map((d) => d.date) ?? [],
   );
-  const best = (report?.publication?.stale ? [] : days)
-    .map((d) => ({ date: d, cell: availabilityCell(zones, [d]) }))
-    .filter((d) => d.cell.complete)
-    .sort((a, b) => b.cell.probability! - a.cell.probability!)[0];
+  const best = report?.publication?.stale
+    ? undefined
+    : bestForecastDay(zones, days);
   const mapPoints = groups.find(([name]) => name === mapRegion)?.[1] ?? zones;
   const lat = mapPoints.length
     ? mapPoints.reduce((s, z) => s + z.lat, 0) / mapPoints.length
@@ -108,18 +121,19 @@ export default function AvailabilityOverview({
     <div className="availability-overview">
       <div className="availability-top">
         <section
-          className="availability-map"
+          className={`availability-map ${mapOpen ? "map-open" : ""}`}
+          hidden={!zones.length}
           aria-label="Mapa meteorológico de Windy"
         >
           <div className="availability-map-header">
             <strong>
-              Windy <span>Clima en las zonas de trabajo</span>
+              Windy <span>Mapa de referencia · no filtra el análisis</span>
             </strong>
             <div>
               <label>
-                <span className="availability-sr-only">Zona del mapa</span>
+                <span className="availability-sr-only">Centrar mapa en</span>
                 <select
-                  aria-label="Zona del mapa"
+                  aria-label="Centrar mapa en"
                   value={groups.some(([n]) => n === mapRegion) ? mapRegion : ""}
                   onChange={(e) => setMapRegion(e.target.value)}
                 >
@@ -142,6 +156,13 @@ export default function AvailabilityOverview({
               </label>
             </div>
           </div>
+          <button
+            className="availability-map-toggle"
+            aria-expanded={mapOpen}
+            onClick={() => setMapOpen((v) => !v)}
+          >
+            {mapOpen ? "Ocultar mapa" : "Mostrar mapa de Windy"}
+          </button>
           <iframe
             title="Windy · mapa meteorológico oficial"
             src={`https://embed.windy.com/embed2.html?${embed}`}
@@ -150,8 +171,9 @@ export default function AvailabilityOverview({
           />
           <div className="availability-map-foot">
             <span>
-              La fecha y el modelo se eligen dentro de Windy. Sus colores no
-              indican días aptos.
+              Si el mapa no carga, podés abrir Windy. Las estimaciones siguen
+              disponibles. La fecha y el modelo del mapa se eligen dentro de
+              Windy.
             </span>
             <a
               href={`https://www.windy.com/?${overlay === "rain" ? "rain," : ""}${lat.toFixed(3)},${lon.toFixed(3)},6`}
@@ -164,25 +186,26 @@ export default function AvailabilityOverview({
         </section>
         <section
           className="availability-summary"
+          hidden={!report || !zones.length}
           aria-label="Resumen de días disponibles"
         >
           <div className="availability-summary-head">
-            <span className="planning-eyebrow">DÍAS DISPONIBLES ESTIMADOS</span>
+            <span className="planning-eyebrow">DÍAS APTOS ESTIMADOS</span>
             <button onClick={onZones}>
               Elegir zonas <ArrowUpRight size={12} aria-hidden="true" />
             </button>
           </div>
           <div className="availability-primary-stat">
             <span>
-              {report?.publication?.stale
-                ? `Período ${date(report.start)}–${date(days.at(-1) ?? report.start)}`
-                : `Próximos ${days.length || 14} días`}
+              {days.length
+                ? `${date(days[0])}–${date(days.at(-1)!)} · ${days.length} días analizados`
+                : "Seleccioná zonas para comparar"}
             </span>
             <strong>
               {number(next.expected)} <small>días</small>
             </strong>
             <p>
-              en promedio por ubicación
+              en promedio por ubicación · pueden ser días separados
               {!next.complete && next.expected !== null
                 ? " · cobertura parcial"
                 : ""}
@@ -215,21 +238,19 @@ export default function AvailabilityOverview({
             <span>
               {report?.publication?.stale
                 ? "Informe pendiente de actualizar"
-                : "Mayor disponibilidad en los próximos 14 días"}
+                : "Fecha mejor posicionada según el pronóstico"}
             </span>
             <strong>
               {best
                 ? `${date(best.date)} · ${percent(best.cell.probability)}`
-                : "Sin cobertura completa para comparar"}
+                : zones.length
+                  ? "Sin pronóstico suficiente para comparar fechas"
+                  : "Elegí al menos una zona"}
             </strong>
             <small>
               {best
-                ? `${Object.keys(best.cell.sources)
-                    .map((s) => sourceName[s] ?? s)
-                    .join(
-                      " + ",
-                    )} · promedio por ubicación. No confirma una fecha de trabajo.`
-                : "La comparación aparecerá cuando todas las ubicaciones tengan información."}
+                ? `Pronóstico en ${best.locations}/${best.total} ubicaciones. Promedio climático; no confirma una salida ni una racha.`
+                : "La historia orienta la campaña, pero no permite anunciar el clima de una fecha concreta."}
             </small>
           </div>
           <p className="availability-summary-note">
@@ -237,10 +258,55 @@ export default function AvailabilityOverview({
             {next.total
               ? `${Math.floor((next.covered / next.total) * 100)}%`
               : "sin datos"}
-            . Los días esperados suman probabilidades; no son días confirmados.
+            . {availabilityBacking(next)}. Cobertura no equivale a certeza. Los
+            días estimados no son días confirmados ni necesariamente
+            consecutivos.
           </p>
         </section>
       </div>
+      {zones.length > 0 && (
+        <section
+          className="availability-zone-outlook"
+          aria-label="Comparación de ventanas por zona"
+        >
+          <h2>Planificá por zona</h2>
+          <p>
+            Compará fechas con pronóstico y consultá la continuidad de cada
+            ubicación. Una media regional no garantiza que todos los campos
+            estén aptos.
+          </p>
+          <div>
+            {groups.map(([name, items]) => {
+              const candidate = report?.publication?.stale
+                ? undefined
+                : bestForecastDay(items, days);
+              const estimate = availabilityCell(items, days);
+              return (
+                <article key={name}>
+                  <h3>{name}</h3>
+                  <strong>{number(estimate.expected)} días estimados</strong>
+                  <p>
+                    por ubicación en {days.length} días ·{" "}
+                    {availabilityBacking(estimate)}
+                  </p>
+                  <p>
+                    {candidate
+                      ? `${date(candidate.date)} · ${percent(candidate.cell.probability)} promedio con pronóstico (${candidate.locations}/${items.length} ubicaciones)`
+                      : "Sin pronóstico vigente suficiente; consultá la referencia histórica por semana."}
+                  </p>
+                  <button
+                    onClick={() =>
+                      onDetail(items[0].key, candidate?.date ?? days[0])
+                    }
+                  >
+                    Ver fechas y continuidad en {name}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <section
         className="availability-matrix-panel"
         aria-labelledby="availability-heading"
@@ -262,7 +328,7 @@ export default function AvailabilityOverview({
             <button
               aria-pressed={mode === "days"}
               onClick={() => {
-                setMode("days");
+                onMode("days");
                 setActive(null);
               }}
             >
@@ -271,7 +337,7 @@ export default function AvailabilityOverview({
             <button
               aria-pressed={mode === "weeks"}
               onClick={() => {
-                setMode("weeks");
+                onMode("weeks");
                 setActive(null);
               }}
             >
@@ -281,9 +347,13 @@ export default function AvailabilityOverview({
         </div>
         <div className="availability-legend">
           <div>
-            <span>Menor</span>
+            <span>{mode === "days" ? "0%" : "0 días"}</span>
             <i aria-hidden="true" />
-            <span>Mayor disponibilidad</span>
+            <span>
+              {mode === "days"
+                ? "100% de probabilidad"
+                : "7 días / semana completa"}
+            </span>
           </div>
           <span>
             <i className="availability-missing-swatch" /> Sin datos
@@ -294,7 +364,15 @@ export default function AvailabilityOverview({
         </div>
         {!report ? (
           <div className="availability-empty" role="status">
-            Cargando las estimaciones…
+            {error ? (
+              <>
+                <strong>No se pudo cargar el informe</strong>
+                <p>{error}</p>
+                <button onClick={onRetry}>Volver a intentar</button>
+              </>
+            ) : (
+              "Cargando las estimaciones…"
+            )}
           </div>
         ) : !zones.length ? (
           <div className="availability-empty">
@@ -344,7 +422,7 @@ export default function AvailabilityOverview({
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {rows.map((row, rowIndex) => (
                     <tr key={row.name}>
                       <th scope="row">
                         <button
@@ -357,6 +435,9 @@ export default function AvailabilityOverview({
                         <small>
                           {row.items.length} ubicaciones ·{" "}
                           {row.items.reduce((s, z) => s + z.pending, 0)} equipos
+                        </small>
+                        <small className="availability-mobile-total">
+                          {number(row.total.expected)} días del período
                         </small>
                       </th>
                       {row.cells.map((cell, i) => {
@@ -381,6 +462,41 @@ export default function AvailabilityOverview({
                               style={availabilityColor(cell.probability)}
                               title={description}
                               aria-label={description}
+                              data-row={rowIndex}
+                              data-col={i}
+                              tabIndex={rowIndex === 0 && i === 0 ? 0 : -1}
+                              onFocus={(e) => {
+                                e.currentTarget
+                                  .closest("table")
+                                  ?.querySelectorAll<HTMLButtonElement>(
+                                    ".availability-cell",
+                                  )
+                                  .forEach(
+                                    (b) =>
+                                      (b.tabIndex =
+                                        b === e.currentTarget ? 0 : -1),
+                                  );
+                              }}
+                              onKeyDown={(e) => {
+                                const movement: Record<
+                                  string,
+                                  [number, number]
+                                > = {
+                                  ArrowRight: [0, 1],
+                                  ArrowLeft: [0, -1],
+                                  ArrowUp: [-1, 0],
+                                  ArrowDown: [1, 0],
+                                };
+                                const delta = movement[e.key];
+                                if (!delta) return;
+                                const target = e.currentTarget
+                                  .closest("table")
+                                  ?.querySelector<HTMLButtonElement>(
+                                    `button[data-row="${rowIndex + delta[0]}"][data-col="${i + delta[1]}"]`,
+                                  );
+                                e.preventDefault();
+                                target?.focus();
+                              }}
                               aria-pressed={
                                 active?.region === row.name &&
                                 active.start === p.start
@@ -395,6 +511,9 @@ export default function AvailabilityOverview({
                               }
                             >
                               {label}
+                              <small className="availability-backing">
+                                {availabilityBacking(cell)}
+                              </small>
                               {!cell.complete && cell.expected !== null && (
                                 <span
                                   className="availability-partial-mark"
@@ -420,53 +539,78 @@ export default function AvailabilityOverview({
                 </tbody>
               </table>
             </div>
-            {selectedCell && selectedRow && selectedPeriod && (
-              <div className="availability-cell-detail" role="status">
-                <div>
-                  <strong>
-                    {selectedRow.name} · {date(selectedPeriod.start)}
-                    {mode === "weeks" ? ` al ${date(selectedPeriod.end)}` : ""}
-                  </strong>
-                  <p>
-                    {mode === "days"
-                      ? `${percent(selectedCell.probability)} de probabilidad diaria promedio`
-                      : `${number(selectedCell.expected)} días esperados por ubicación`}
-                    . {coverage(selectedCell)}.
-                    {!selectedCell.complete
-                      ? " Cobertura incompleta; no se extrapolan los faltantes."
-                      : ""}
-                  </p>
-                  <p>
-                    {Object.entries(selectedCell.sources).length
-                      ? Object.entries(selectedCell.sources)
-                          .map(
-                            ([s, n]) =>
-                              `${sourceName[s] ?? s}: ${n} ubicación-fechas`,
-                          )
-                          .join(" · ")
-                      : "Todavía no hay evidencia suficiente. Revisá el estado de las descargas en Datos y criterios."}
-                  </p>
+            <dialog
+              ref={dialog}
+              className="availability-cell-dialog"
+              aria-labelledby="cell-detail-title"
+              onClose={() => setActive(null)}
+            >
+              {selectedCell && selectedRow && selectedPeriod && (
+                <div className="availability-cell-detail">
+                  <div>
+                    <h2 id="cell-detail-title">
+                      {selectedRow.name} · {date(selectedPeriod.start)}
+                      {mode === "weeks"
+                        ? ` al ${date(selectedPeriod.end)}`
+                        : ""}
+                    </h2>
+                    <p>
+                      {mode === "days"
+                        ? `${percent(selectedCell.probability)} de probabilidad diaria promedio`
+                        : `${number(selectedCell.expected)} días esperados por ubicación`}
+                      . {coverage(selectedCell)}.
+                      {!selectedCell.complete
+                        ? " Cobertura incompleta; no se extrapolan los faltantes."
+                        : ""}
+                    </p>
+                    <p>
+                      {Object.entries(selectedCell.sources).length
+                        ? Object.entries(selectedCell.sources)
+                            .map(
+                              ([s, n]) =>
+                                `${sourceName[s] ?? s}: ${n} ubicación-fechas`,
+                            )
+                            .join(" · ")
+                        : "Todavía no hay evidencia suficiente. Revisá el estado de las descargas en Datos y criterios."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      dialog.current?.close();
+                      onDetail(selectedRow.items[0].key, selectedPeriod.start);
+                    }}
+                  >
+                    Ver detalle por ubicación{" "}
+                    <ArrowUpRight size={12} aria-hidden="true" />
+                  </button>
                 </div>
-                <button
-                  onClick={() =>
-                    onDetail(selectedRow.items[0].key, selectedPeriod.start)
-                  }
-                >
-                  Ver detalle por ubicación{" "}
-                  <ArrowUpRight size={12} aria-hidden="true" />
-                </button>
-              </div>
-            )}
+              )}
+              <button onClick={() => dialog.current?.close()}>
+                Cerrar detalle
+              </button>
+            </dialog>
             <div className="availability-table-note">
               <span>
                 Cada fila promedia las coordenadas de los equipos de esa zona.
-                Tocá una celda para ver sus fuentes y cobertura.
+                Tocá una celda para ver sus fuentes y cobertura. Usá las flechas
+                del teclado para recorrer fechas y zonas. En móvil, deslizá para
+                ver más fechas.
               </span>
               <button onClick={onZones}>Modificar selección</button>
             </div>
           </>
         )}
       </section>
+      {report && (
+        <p className="availability-print-criteria">
+          Ensayo: {report.rules.minHours} h seguidas entre{" "}
+          {report.rules.startHour} y {report.rules.endHour} h · viento ≤{" "}
+          {report.rules.wind} km/h · lluvia durante el ensayo ≤{" "}
+          {report.rules.rain} mm · lluvia del día anterior &lt;{" "}
+          {report.rules.rain24Limit} mm. Evalúa clima; el acceso al campo se
+          verifica por separado.
+        </p>
+      )}
     </div>
   );
 }

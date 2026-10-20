@@ -4,6 +4,8 @@ import {
   availabilityCell,
   availabilityGroups,
   availabilityColor,
+  availabilityBacking,
+  bestForecastDay,
 } from "../src/domain/availability-matrix";
 import type { PlanningZone } from "../src/domain/planning-report";
 const zone = (region: string, values: (number | null)[], equipment = 1) =>
@@ -33,6 +35,33 @@ test("daily regional means weight coordinates equally and never multiply by equi
   ]);
   assert.equal(groups.length, 2);
   assert.equal(groups[0][1].length, 2);
+});
+test("forecast comparisons never announce a historical day as a weather forecast", () => {
+  const historical = zone("Centro", [0.1, 1]);
+  const candidate = bestForecastDay([historical], ["2026-10-21", "2026-10-22"]);
+  assert.equal(candidate?.date, "2026-10-21");
+  assert.equal(
+    availabilityBacking(
+      availabilityCell([historical], ["2026-10-21", "2026-10-22"]),
+    ),
+    "Mixto",
+  );
+  assert.equal(bestForecastDay([historical], ["2026-10-22"]), undefined);
+});
+test("every heatmap color maintains AA contrast for normal text", () => {
+  const luminance = (rgb: number[]) =>
+    rgb
+      .map((v) => {
+        const c = v / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      })
+      .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+  for (let i = 0; i <= 1000; i++) {
+    const color = availabilityColor(i / 1000);
+    const bg = luminance(color.backgroundColor.match(/\d+/g)!.map(Number));
+    const fg = color.color === "#ffffff" ? 1 : 0;
+    assert.ok((Math.max(bg, fg) + 0.05) / (Math.min(bg, fg) + 0.05) >= 4.5);
+  }
 });
 test("weekly cells sum daily probabilities per location and normalize color by covered days", () => {
   const cell = availabilityCell(
