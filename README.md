@@ -14,6 +14,10 @@ npm run dev
 
 Abrir http://127.0.0.1:3000. La persistencia por defecto es local: `data/state.json`, `data/research/`, `data/long-range/` y `data/snapshots/`. Los datos privados y las cachés están excluidos de Git. No hay autenticación; el servidor se limita a loopback.
 
+Al abrir la aplicación se inicia la carga automática. Si no hay equipos, importa el mapa de Google My Maps configurado; luego descarga el corto plazo, la malla de lluvia y viento, los históricos ERA5, NOAA y el pronóstico hasta fin de año. Una notificación muestra el progreso y los errores reales de cada fuente. No hace falta pulsar los botones de Fuentes. El servidor debe permanecer encendido; la descarga continúa al navegar o cerrar la pestaña. Al volver a abrir la app tras reiniciar, reutiliza los archivos ya guardados. Los errores se reintentan tras cinco minutos, y los datos vigentes se conservan. No modifica automáticamente equipos ya cargados.
+
+La primera carga de 45 años de históricos y 527 puntos de malla puede tardar bastante y está sujeta a acceso y límites de los proveedores. Sin conexión o sin acceso al mapa de origen se muestra el motivo y se reintenta; no se generan datos ficticios. En Windows conviene ubicar el proyecto fuera de OneDrive (por ejemplo `C:\Proyectos\climato`); el guardado reintenta bloqueos temporales antes de informar un error.
+
 ## Uso
 
 - **Mapa:** capa conjunta de lluvia y viento. El color representa lluvia diaria para hoy y lluvia acumulada esperada al elegir una semana: gris en 0, luego azul, verde, amarillo y rojo, con escala no lineal ajustada al período: 0 a 50+ mm para un día y 0 a 350+ mm para siete días. El acumulado esperado no implica lluvia continua. Los trazos siguen la dirección media del viento; su longitud, grosor, visibilidad y velocidad aumentan con la intensidad. WebGL dibuja unas 550 líneas con varios trazos por línea, calculando la geometría al cambiar fecha o posición. Si no está disponible, usa una alternativa SVG menos densa. Puede pausarse y respeta movimiento reducido. La disponibilidad climática se consulta como otra capa. Búsqueda, centrado en equipos y resumen ocultable.

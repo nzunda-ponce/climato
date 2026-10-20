@@ -26,6 +26,7 @@ import PossibleWindows from "./PossibleWindows";
 import { RAIN_GRADIENT, weatherPeriodDays } from "@/domain/weather-grid";
 import { ClimateData, SourceStatus } from "./climate-types";
 import ClimateDataRules from "./ClimateDataRules";
+import AutoSyncStatus from "./AutoSyncStatus";
 import "./climate.css";
 const ClimateMap = dynamic(() => import("./OperationalMap"), { ssr: false });
 const fmt = (v: number | null, digits = 0) =>
@@ -246,18 +247,22 @@ export default function ClimateWorkspace() {
   }, [windowsOpen, data, range, equipment, chosen]);
   if (management && data)
     return (
-      <ClimateDataRules
-        data={data}
-        sources={sources}
-        onReload={load}
-        onClose={() => {
-          setManagement(false);
-          load().catch((e) => setError(e.message));
-        }}
-      />
+      <>
+        <AutoSyncStatus onReload={load} />
+        <ClimateDataRules
+          data={data}
+          sources={sources}
+          onReload={load}
+          onClose={() => {
+            setManagement(false);
+            load().catch((e) => setError(e.message));
+          }}
+        />
+      </>
     );
   return (
     <div className="climate-app windy-workspace">
+      <AutoSyncStatus onReload={load} />
       <header className="climate-header">
         <a href="/" className="climate-logo">
           climato

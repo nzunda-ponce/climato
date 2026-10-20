@@ -1,6 +1,8 @@
 import { promises as fs } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { replaceFile } from "@/persistence/replace-file";
 import { addDays, Hour, localDate, Rules } from "@/domain/types";
 import { dailyRainTotal } from "@/domain/weather-rules";
 import {
@@ -35,24 +37,9 @@ export async function writeLongCache(name: string, value: unknown) {
   if (!/^[\w.,-]+$/.test(name)) throw new Error("Nombre de caché inválido");
   await fs.mkdir(root, { recursive: true });
   const target = path.join(root, name + ".json.gz"),
-    temp = target + `.${process.pid}.tmp`;
+    temp = target + `.${process.pid}.${randomUUID()}.tmp`;
   await fs.writeFile(temp, gzipSync(JSON.stringify(value)));
-  // OneDrive can briefly lock an existing cache during synchronization.
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await fs.rename(temp, target);
-      break;
-    } catch (error) {
-      if (
-        !["EPERM", "EBUSY", "EACCES"].includes(
-          (error as NodeJS.ErrnoException).code ?? "",
-        ) ||
-        attempt >= 5
-      )
-        throw error;
-      await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
-    }
-  }
+  await replaceFile(temp, target);
 }
 export async function fetchJson(url: URL) {
   for (let i = 0; i < 4; i++) {

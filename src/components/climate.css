@@ -2041,3 +2041,32 @@
     display: block;
   }
 }
+.auto-sync-status {
+  position: fixed;
+  z-index: 1200;
+  left: 16px;
+  bottom: 170px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: 35vh;
+  overflow: auto;
+  padding: 14px 16px;
+  border: 1px solid #527b80;
+  border-radius: 8px;
+  background: #162d3b;
+  color: #eff8fb;
+  box-shadow: 0 4px 20px #0004;
+  font-size: 13px;
+}
+.auto-sync-status strong,
+.auto-sync-status span,
+.auto-sync-status small {
+  display: block;
+  margin-bottom: 6px;
+}
+.auto-sync-status details {
+  margin-top: 8px;
+}
+.auto-sync-status li {
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
