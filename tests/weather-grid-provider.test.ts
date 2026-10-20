@@ -1,8 +1,28 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { closeDatabase } from "../src/persistence/store";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadGridBatch } from "../src/providers/long-range";
 
 test("an incomplete last forecast day preserves the seasonal rainfall while updating wind", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "climato-provider-"));
+  const cwd = process.cwd(),
+    oldUrl = process.env.DATABASE_URL,
+    oldPath = process.env.CLIMATO_SQLITE_PATH;
+  process.chdir(dir);
+  process.env.DATABASE_URL = "";
+  process.env.CLIMATO_SQLITE_PATH = path.join(dir, "test.sqlite");
+  t.after(async () => {
+    await closeDatabase();
+    process.chdir(cwd);
+    if (oldUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = oldUrl;
+    if (oldPath === undefined) delete process.env.CLIMATO_SQLITE_PATH;
+    else process.env.CLIMATO_SQLITE_PATH = oldPath;
+    await rm(dir, { recursive: true, force: true });
+  });
   const date = "2026-10-29";
   t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
     const seasonal = String(input).includes("seasonal-api");

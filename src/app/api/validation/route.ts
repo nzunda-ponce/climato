@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { readState } from "@/persistence/store";
+import { readState, readValidationArchive } from "@/persistence/store";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { confusionReport } from "@/domain/forecast-validation";
-import { locationWarning } from "@/domain/types";
+import { locationWarning, addDays, localDate } from "@/domain/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
-    const s = await readState(),
+    const s = await readState({ namespaces: ["settings", "pivot"] }),
       params = new URL(request.url).searchParams;
     const lead = Number(params.get("lead") ?? 1),
       threshold = Number(params.get("threshold") ?? 0.7);
@@ -31,14 +31,15 @@ export async function GET(request: Request) {
     const keys = [...new Set(params.getAll("key"))].filter((k) =>
       allowed.has(k),
     );
+    const archive = await readValidationArchive({
+      locations: keys,
+      signature: rulesSignature(s.rules),
+      lead,
+      start: addDays(localDate(), -30),
+      end: addDays(localDate(), -1),
+    });
     return NextResponse.json(
-      confusionReport(
-        s.validationArchive ?? { predictions: [], outcomes: [] },
-        keys,
-        rulesSignature(s.rules),
-        lead,
-        threshold,
-      ),
+      confusionReport(archive, keys, rulesSignature(s.rules), lead, threshold),
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {

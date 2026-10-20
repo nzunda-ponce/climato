@@ -5,9 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    return NextResponse.json(buildPlanningReport(await readState()), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      buildPlanningReport(await readState({ purpose: "planning" })),
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch {
     return NextResponse.json(
       { error: "No se pudo cargar el informe de planificación." },

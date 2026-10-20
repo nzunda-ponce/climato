@@ -127,3 +127,25 @@ test("changing rules cancels remaining stale tasks and allows recalculation with
   await runner.start();
   assert.equal(calls, 2);
 });
+
+test("persistent failures back off and invalidation allows an immediate retry", async () => {
+  let time = 0,
+    calls = 0;
+  const runner = createSyncRunner(
+    async () => {
+      calls++;
+      throw new Error("offline");
+    },
+    () => time,
+  );
+  for (const delay of [5, 10, 20, 40, 80, 160, 320, 360]) {
+    await runner.start();
+    assert.equal(runner.status.retryAt, time + delay * 60000);
+    time += delay * 60000;
+  }
+  assert.equal(calls, 8);
+  runner.invalidate();
+  await runner.start();
+  assert.equal(calls, 9);
+  assert.equal(runner.status.retryAt, time + 5 * 60000);
+});

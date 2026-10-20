@@ -20,7 +20,7 @@ const schema = z
     "La verificación debe corresponder a una ventana pasada y a un pronóstico emitido antes de ella.",
   );
 export async function GET() {
-  const s = await readState();
+  const s = await readState({ namespaces: ["observation"] });
   return NextResponse.json({
     count: s.observations?.length ?? 0,
     calibration: trainCalibration(s.observations ?? []),
@@ -33,19 +33,22 @@ export async function POST(req: Request) {
       .array(schema)
       .max(10000)
       .parse(Array.isArray(body) ? body : [body]);
-    await mutateState((s) => {
-      for (const item of entries) {
-        if (!s.pivots.some((p) => p.id === item.pivotId))
-          throw new Error("Equipo inexistente");
-        if (
-          s.observations?.some(
-            (o) => o.pivotId === item.pivotId && o.validAt === item.validAt,
+    await mutateState(
+      (s) => {
+        for (const item of entries) {
+          if (!s.pivots.some((p) => p.id === item.pivotId))
+            throw new Error("Equipo inexistente");
+          if (
+            s.observations?.some(
+              (o) => o.pivotId === item.pivotId && o.validAt === item.validAt,
+            )
           )
-        )
-          throw new Error("Ventana ya verificada para ese equipo");
-        (s.observations ??= []).push({ id: randomUUID(), ...item });
-      }
-    });
+            throw new Error("Ventana ya verificada para ese equipo");
+          (s.observations ??= []).push({ id: randomUUID(), ...item });
+        }
+      },
+      { namespaces: ["pivot", "observation"] },
+    );
     return NextResponse.json({ ok: true, added: entries.length });
   } catch (e) {
     return NextResponse.json(

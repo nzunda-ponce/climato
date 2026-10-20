@@ -9,6 +9,7 @@ import {
   locationDayEstimate,
   missingForecastLabel,
 } from "@/domain/planning-summary";
+import StorageStatus from "./StorageStatus";
 import AutoSyncStatus from "./AutoSyncStatus";
 import "./planning.css";
 
@@ -224,6 +225,7 @@ export default function PlanningWorkspace() {
                 : "Cargando…"}
             </strong>
             <span>Hora argentina · actualización diaria automática</span>
+            <StorageStatus />
           </div>
         </section>
         {error && (

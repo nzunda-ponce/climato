@@ -1,4 +1,5 @@
-import { readState, mutateState } from "@/persistence/store";
+import { acquireSyncLease } from "@/persistence/store";
+import { readState, mutateState, mergeClimateBatch } from "@/persistence/store";
 import { parsePivots } from "@/domain/import";
 import { syncPivots } from "@/domain/sync-pivots";
 import { cellKey, rulesSignature } from "@/domain/evidence";
@@ -7,7 +8,6 @@ import { EnsoIndex } from "@/domain/seasonal";
 import { operationalSync } from "./operational-sync";
 import { loadEnso, readLongCache } from "./long-range";
 import { loadHistoryYearBatch } from "./history-batch";
-import { mergeHistory } from "@/domain/history-training";
 import { fairEnsembleOrder } from "./ensemble-order";
 import { createSyncRunner, SyncTask } from "./sync-runner";
 
@@ -17,7 +17,7 @@ const fresh = (date: string | undefined, hours: number) => {
 };
 
 async function plan(): Promise<SyncTask[]> {
-  let state = await readState();
+  let state = await readState({ purpose: "planning" });
   // Seed only an empty installation. Existing equipment, edits and work status stay intact.
   if (!state.pivots.length) {
     autoSync.status.message = "Importando equipos de Google My Maps";
@@ -39,11 +39,14 @@ async function plan(): Promise<SyncTask[]> {
     );
     if (!incoming.length)
       throw new Error("El mapa de origen no devolvió equipos.");
-    await mutateState((s) => {
-      // Another tab or a manual import may have seeded the installation meanwhile.
-      if (!s.pivots.length) s.pivots = syncPivots(s.pivots, incoming).pivots;
-    });
-    state = await readState();
+    await mutateState(
+      (s) => {
+        // Another tab or a manual import may have seeded the installation meanwhile.
+        if (!s.pivots.length) s.pivots = syncPivots(s.pivots, incoming).pivots;
+      },
+      { namespaces: ["settings", "pivot"] },
+    );
+    state = await readState({ purpose: "planning" });
   }
   const points = [
     ...new Map(
@@ -94,12 +97,7 @@ async function plan(): Promise<SyncTask[]> {
         label: `Referencia histórica ${year} · ${Math.min(i + 6, missing.length)}/${missing.length} ubicaciones · ${offset < 10 ? "base inicial de 10 años" : "ampliando a 45 años"}`,
         run: async () => {
           const results = await loadHistoryYearBatch(batch, year, state.rules);
-          await mutateState((s) => {
-            if (rulesSignature(s.rules) !== signature) return;
-            for (const h of results)
-              if (s.pivots.some((p) => cellKey(p.lat, p.lon) === h.key))
-                (s.climate ??= {})[h.key] = mergeHistory(s.climate?.[h.key], h);
-          });
+          await mergeClimateBatch(results, signature);
         },
       });
     }
@@ -111,4 +109,8 @@ async function plan(): Promise<SyncTask[]> {
 const shared = globalThis as unknown as {
   climatoAutoSync?: ReturnType<typeof createSyncRunner>;
 };
-export const autoSync = (shared.climatoAutoSync ??= createSyncRunner(plan));
+export const autoSync = (shared.climatoAutoSync ??= createSyncRunner(
+  plan,
+  Date.now,
+  () => acquireSyncLease("history"),
+));

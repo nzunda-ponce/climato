@@ -1,4 +1,11 @@
-import { readState, mutateState, saveSnapshot } from "@/persistence/store";
+import { acquireSyncLease } from "@/persistence/store";
+import {
+  readState,
+  mutateState,
+  saveSnapshot,
+  readForecastTimes,
+  readClimate,
+} from "@/persistence/store";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { locationWarning } from "@/domain/types";
 import { isFresh } from "@/domain/opportunity-report";
@@ -10,7 +17,9 @@ import { createSyncRunner, SyncTask } from "./sync-runner";
 const fresh = (date: string | undefined, hours: number) =>
   isFresh(date, Date.now(), hours);
 async function plan() {
-  const state = await readState();
+  const state = await readState({ purpose: "planning" });
+  if (!state.pivots.length) return [];
+  const forecastTimes = await readForecastTimes();
   const signature = rulesSignature(state.rules);
   const points = [
     ...new Map(
@@ -22,7 +31,8 @@ async function plan() {
   const tasks: SyncTask[] = [
     {
       label: "Archivando estimaciones para validación",
-      run: () => mutateState(() => {}),
+      run: () =>
+        mutateState(() => {}, { namespaces: ["settings", "ensemble"] }),
     },
   ];
   const weatherTasks: SyncTask[] = [];
@@ -30,7 +40,7 @@ async function plan() {
     (p) =>
       !locationWarning(p) &&
       p.status !== "TERMINADO" &&
-      !fresh(state.forecasts[p.id]?.fetchedAt, 1),
+      !fresh(forecastTimes[p.id], 1),
   );
   for (let i = 0; i < weather.length; i += 15) {
     const batch = weather.slice(i, i + 15);
@@ -42,20 +52,23 @@ async function plan() {
           if (results[j]?.models.length)
             await saveSnapshot(batch[j].id, results[j]);
         }
-        await mutateState((s) => {
-          batch.forEach((p, j) => {
-            if (
-              results[j]?.models.length &&
-              s.pivots.some(
-                (current) =>
-                  current.id === p.id &&
-                  current.lat === p.lat &&
-                  current.lon === p.lon,
+        await mutateState(
+          (s) => {
+            batch.forEach((p, j) => {
+              if (
+                results[j]?.models.length &&
+                s.pivots.some(
+                  (current) =>
+                    current.id === p.id &&
+                    current.lat === p.lat &&
+                    current.lon === p.lon,
+                )
               )
-            )
-              s.forecasts[p.id] = results[j];
-          });
-        });
+                s.forecasts[p.id] = results[j];
+            });
+          },
+          { namespaces: ["settings", "pivot", "forecast"] },
+        );
         if (
           results.length !== batch.length ||
           results.some((r) => !r.models.length)
@@ -85,24 +98,29 @@ async function plan() {
       label: `Estimación integrada · ${Math.min(i + 6, ordered.length)}/${ordered.length} ubicaciones`,
       run: async () => {
         const results = await loadEnsembleBatch(batch, state.rules);
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) !== signature) return;
-          for (const result of results) {
-            if (
-              !s.pivots.some((p) => cellKey(p.lat, p.lon) === result.point.key)
-            )
-              continue;
-            if (result.assessment)
-              (s.ensembles ??= {})[result.point.key] = result.assessment;
-            if (result.error)
-              (s.ensembleFailures ??= {})[result.point.key] = {
-                at: new Date().toISOString(),
-                message: result.error,
-              };
-            else if (s.ensembleFailures)
-              delete s.ensembleFailures[result.point.key];
-          }
-        });
+        await mutateState(
+          (s) => {
+            if (rulesSignature(s.rules) !== signature) return;
+            for (const result of results) {
+              if (
+                !s.pivots.some(
+                  (p) => cellKey(p.lat, p.lon) === result.point.key,
+                )
+              )
+                continue;
+              if (result.assessment)
+                (s.ensembles ??= {})[result.point.key] = result.assessment;
+              if (result.error)
+                (s.ensembleFailures ??= {})[result.point.key] = {
+                  at: new Date().toISOString(),
+                  message: result.error,
+                };
+              else if (s.ensembleFailures)
+                delete s.ensembleFailures[result.point.key];
+            }
+          },
+          { namespaces: ["settings", "pivot", "ensemble", "ensemble-failure"] },
+        );
         const errors = results.filter((r) => r.error);
         if (errors.length)
           throw new Error(
@@ -138,12 +156,15 @@ async function plan() {
           p.lat,
           p.lon,
           state.rules,
-          history,
+          (await readClimate(key)) ?? history,
         );
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.seasonal ??= {})[key] = result;
-        });
+        await mutateState(
+          (s) => {
+            if (rulesSignature(s.rules) === signature)
+              (s.seasonal ??= {})[key] = result;
+          },
+          { namespaces: ["settings", "seasonal"] },
+        );
         if (result.errors.length) throw new Error(result.errors.join(" · "));
       },
     });
@@ -154,4 +175,4 @@ const shared = globalThis as unknown as {
   climatoOperationalSync?: ReturnType<typeof createSyncRunner>;
 };
 export const operationalSync = (shared.climatoOperationalSync ??=
-  createSyncRunner(plan));
+  createSyncRunner(plan, Date.now, () => acquireSyncLease("weather")));

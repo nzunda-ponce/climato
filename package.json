@@ -7,9 +7,14 @@
     "dev:manual": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:setup": "node --import tsx scripts/database.ts setup",
+    "db:migrate": "node --import tsx scripts/database.ts migrate",
+    "db:status": "node --import tsx scripts/database.ts status",
+    "db:backup": "node --import tsx scripts/database.ts backup",
+    "db:restore": "node --import tsx scripts/database.ts restore"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
@@ -21,7 +26,8 @@
     "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^3.25.0"
+    "zod": "^3.25.0",
+    "@next/env": "15.5.28"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.20",
@@ -37,5 +43,8 @@
   "overrides": {
     "postcss": "^8.5.30",
     "deepmerge-ts": "^8.0.2"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

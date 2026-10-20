@@ -4,7 +4,7 @@ Informe de planificación de uniformidades en campo: zonas seleccionables, anál
 
 ## Ejecutar
 
-Node.js 22 o superior:
+Node.js 24 o superior:
 
 ```sh
 npm install
@@ -12,7 +12,7 @@ npm run db:generate
 npm run dev
 ```
 
-Abrir <http://127.0.0.1:3000>. En Windows también se puede iniciar con doble clic en **Abrir Climato.cmd**. Conviene ubicar el proyecto fuera de OneDrive (por ejemplo `C:\Proyectos\climato`); el guardado reintenta los bloqueos temporales de archivos.
+Abrir <http://127.0.0.1:3000>. En Windows también se puede iniciar con doble clic en **Abrir Climato.cmd**. Conviene ubicar el proyecto fuera de OneDrive (por ejemplo `C:\Proyectos\climato`); la base local de transición queda fuera de OneDrive, en `%LOCALAPPDATA%\Climato`. Con PostgreSQL no se guarda el estado mediante renombrados de JSON.
 
 `npm run dev` revisa cada 15 segundos la rama de GitHub configurada y actualiza código, dependencias y servidor. También recarga la página. Para activar esto en una instalación anterior hay que actualizar una vez y reiniciar con `npm run dev`. Con cambios locales o ramas divergentes, la actualización se pausa sin sobrescribirlos. `npm run dev:manual` permite desarrollar sin sincronización remota.
 
@@ -67,7 +67,7 @@ La validación del **entrenamiento de análogos** se presenta aparte: entrenamie
 
 Si la instalación no tiene equipos, se importan de Google My Maps. Se actualizan automáticamente pronósticos puntuales, ensembles por coordenada, históricos ERA5, NOAA y perspectiva de campaña. La verificación tiene su propia cola y la carga larga no bloquea el corto plazo. Los errores se muestran y se reintentan; no se generan datos ficticios.
 
-La persistencia por defecto usa `data/state.json`, `data/research/`, `data/long-range/` y `data/snapshots/`. Los datos privados y cachés están excluidos de Git. La validación se guarda en el estado, incluyendo la primera predicción y los criterios de ese momento. No hay autenticación; el servidor se limita a loopback.
+La persistencia principal admite PostgreSQL administrado en la nube. Equipos, criterios, históricos, pronósticos, cachés y validación se guardan en registros comprimidos independientes. Sin una conexión configurada se mantiene una base SQLite local de transición, identificada explícitamente en la página; esto no significa que la nube esté activada. Los datos y credenciales están excluidos de Git. No hay autenticación; el servidor se limita a loopback.
 
 Endpoints principales: `/api/planning`, `/api/validation?lead=1&threshold=0.7&key=lat,lon`, `/api/auto-sync` y `/api/campaign` para criterios. La validación intersecta las claves solicitadas con las ubicaciones activas de los equipos.
 
@@ -80,14 +80,46 @@ npm run build
 
 Las pruebas cubren ventanas horarias, lluvia nocturna y previa, datos faltantes, familias y cobertura, trayectorias y rachas, archivo inmutable, separación temporal de validación, matriz y Brier, ubicaciones próximas distintas, persistencia y actualización automática del código.
 
-## PostgreSQL + PostGIS opcional
+## Base gratuita en la nube: Neon PostgreSQL
+
+Se recomienda [Neon Free](https://neon.com/pricing). El plan gratuito tiene cuotas de almacenamiento, cómputo y transferencia; revisarlas en el panel del proveedor. No hace falta contratar un plan pago para conectar Climato. La base centraliza los datos, pero **no ejecuta el servidor ni las descargas**: Climato debe seguir funcionando en una PC o servidor para actualizar el clima y registrar predicciones todos los días.
+
+Configuración una sola vez, **desde la PC que contiene los datos actuales**, antes de abrir otras instalaciones contra la base nueva:
+
+1. Crear un proyecto vacío con el plan Free en Neon y copiar su cadena PostgreSQL con **Connection pooling** y `sslmode=require`.
+2. En la carpeta del proyecto ejecutar `npm run db:generate` y `npm run db:setup`.
+3. Pegar la cadena en la terminal. No se muestra ni se envía al navegador; se guarda en `.env.local`, excluido de Git. No compartirla por chat.
+4. El comando verifica la conexión y migra automáticamente los datos. Reiniciar Climato una vez. La página debe indicar **Datos guardados en la nube**. `npm run db:status` permite comprobarlo desde la terminal.
+
+La aplicación crea su tabla e índices automáticamente; no requiere PostGIS, Docker, `db:push` ni cargar equipos nuevamente. Si se prefiere configurar la conexión desde el entorno del servidor, establecer `DATABASE_URL` y ejecutar `npm run db:migrate`. Una conexión configurada que falla **produce un error**, sin cambiar silenciosamente a una base local vacía.
+
+### Qué se migra y cómo se conserva
+
+- Se importa el estado anterior `AppState`, si existe en PostgreSQL; en una base nueva se prioriza la base SQLite local más reciente y luego `data/state.json`.
+- Se importan las cachés de `data/research/` y `data/long-range/`, y las capturas recientes. La migración se retoma tras una interrupción y no reimporta ni sobrescribe datos al reiniciar.
+- Los archivos originales y las tablas anteriores se conservan. Después de verificar el informe y descargar un respaldo se pueden archivar aparte; no son la fuente de lectura habitual.
+- El informe consulta resúmenes sin descargar las series horarias de 45 años. Se reutiliza en memoria hasta que cambian los datos; las escrituras guardan solo los registros modificados.
+- Las transacciones evitan pérdidas entre procesos. Las descargas usan coordinación en la base, con vencimiento para recuperarse si un proceso se cierra. Las predicciones congeladas y sus resultados no se reemplazan con actualizaciones posteriores.
+- La caché descargable tiene un presupuesto inicial de **128 MB** (`CLIMATO_CACHE_MAX_MB`). Al superar el límite se eliminan primero las entradas más antiguas de esa caché; se conservan equipos, históricos calculados, criterios y observaciones. Se retiene una captura por equipo y día durante 14 días y los objetivos de validación durante 61 días.
+- El coordinador no consulta la base cada minuto mientras está en espera. Los errores repetidos aumentan la espera entre reintentos hasta seis horas, para evitar descargas y conexiones constantes. Una carga inicial extensa o dejar la página abierta sigue consumiendo cuota; el panel del proveedor es la referencia de uso total, incluyendo índices y tablas anteriores.
+
+### Respaldos y recuperación
+
+«Descargar respaldo» en el informe exporta todos los datos de campaña y validación en JSON. También se puede ejecutar:
 
 ```sh
-docker compose up -d
-npm run db:push
+npm run db:backup
 ```
 
-Configurar `DATABASE_URL` en `.env` y aplicar `prisma/postgis.sql`. El estado y la validación se guardan como `AppState`; la caché meteorológica permanece local. No hay migración automática de datos locales existentes: exportar un respaldo antes de cambiar de modo.
+Crea un archivo comprimido en `data/backups/`, excluido de Git. Incluye equipos, históricos calculados, criterios, pronósticos y validación; omite la caché descargable. Guardar una copia fuera de la PC y de la base.
+
+Para recuperar en **una instalación y base vacías**, configurar la conexión y ejecutar:
+
+```sh
+npm run db:restore -- ruta/al/respaldo.json.gz
+```
+
+También acepta el JSON descargado desde la página. Valida los registros antes de escribir y rechaza una base que ya tenga datos; no sobrescribe una campaña existente. El respaldo no sustituye la supervisión de las cuotas ni garantiza por sí solo continuidad del servicio gratuito.
 
 ## Estimación integrada y cobertura
 

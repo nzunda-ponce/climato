@@ -1,3 +1,4 @@
+import { acquireSyncLease } from "@/persistence/store";
 import { readState, mutateState } from "@/persistence/store";
 import { addDays, Hour, localDate } from "@/domain/types";
 import { alignHourlyIntervals } from "@/domain/evidence";
@@ -7,7 +8,10 @@ import { createSyncRunner, SyncTask } from "./sync-runner";
 // ERA5 is a retrospective weather reference, not a field observation. It has
 // publication latency; absent hours remain unverified and never count as dry.
 export async function verificationTasks(): Promise<SyncTask[]> {
-  const state = await readState(),
+  const state = await readState({
+      validation: true,
+      namespaces: ["settings", "pivot"],
+    }),
     archive = state.validationArchive;
   if (!archive) return [];
   const today = localDate(),
@@ -79,20 +83,26 @@ export async function verificationTasks(): Promise<SyncTask[]> {
           hours,
           new Date().toISOString(),
         );
-        await mutateState((s) => {
-          const a = (s.validationArchive ??= { predictions: [], outcomes: [] });
-          for (const o of outcomes)
-            if (
-              !a.outcomes.some(
-                (v) =>
-                  v.key === o.key &&
-                  v.date === o.date &&
-                  v.signature === o.signature,
+        await mutateState(
+          (s) => {
+            const a = (s.validationArchive ??= {
+              predictions: [],
+              outcomes: [],
+            });
+            for (const o of outcomes)
+              if (
+                !a.outcomes.some(
+                  (v) =>
+                    v.key === o.key &&
+                    v.date === o.date &&
+                    v.signature === o.signature,
+                )
               )
-            )
-              a.outcomes.push(o);
-          (a.refreshed ??= {})[key] = new Date().toISOString();
-        });
+                a.outcomes.push(o);
+            (a.refreshed ??= {})[key] = new Date().toISOString();
+          },
+          { namespaces: ["settings"] },
+        );
       },
     });
   }
@@ -102,4 +112,6 @@ const shared = globalThis as unknown as {
   climatoVerificationSync?: ReturnType<typeof createSyncRunner>;
 };
 export const verificationSync = (shared.climatoVerificationSync ??=
-  createSyncRunner(verificationTasks));
+  createSyncRunner(verificationTasks, Date.now, () =>
+    acquireSyncLease("verification"),
+  ));
