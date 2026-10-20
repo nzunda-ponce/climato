@@ -14,16 +14,14 @@ export default function AutoSyncStatus({
   useEffect(() => {
     let disposed = false;
     let polling = false;
-    let lastStart = 0;
     let lastReload = 0;
     let wasRunning = false;
     const poll = async () => {
       if (polling) return;
       polling = true;
       try {
-        const start = Date.now() - lastStart >= 60000;
         const response = await fetch("/api/auto-sync", {
-          method: start ? "POST" : "GET",
+          method: "GET",
           cache: "no-store",
         });
         if (!response.ok)
@@ -31,7 +29,6 @@ export default function AutoSyncStatus({
             "No se pudo consultar la carga automática. Reintentando…",
           );
         const next: SyncStatus = await response.json();
-        if (start) lastStart = Date.now();
         if (!disposed) {
           setStatus(next);
           setError("");
@@ -58,7 +55,14 @@ export default function AutoSyncStatus({
       clearInterval(timer);
     };
   }, [onReload]);
-  if (!error && status && !status.running && !status.errors.length) return null;
+  if (
+    !error &&
+    status &&
+    !status.running &&
+    !status.errors.length &&
+    !status.message
+  )
+    return null;
   return (
     <aside
       className={`auto-sync-status${inline ? " inline" : ""}`}
@@ -76,8 +80,8 @@ export default function AutoSyncStatus({
       )}
       {status?.running && (
         <small>
-          La primera carga de históricos puede tardar bastante. Se guarda el
-          avance para continuar al reiniciar.
+          El proceso de datos guarda su avance. Consultar esta página no inicia
+          ni repite las descargas.
         </small>
       )}
       {!!status?.errors.length && (

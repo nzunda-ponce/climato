@@ -1,4 +1,4 @@
-import ClimateWorkspace from "@/components/ClimateWorkspace";
+import PlanningWorkspace from "@/components/PlanningWorkspace";
 export default function Page() {
-  return <ClimateWorkspace />;
+  return <PlanningWorkspace />;
 }

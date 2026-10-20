@@ -1,0 +1,696 @@
+/* The overview presents results first; operational detail lives in other views. */
+.planning-app {
+  background: #f6f8f7;
+  --ink: #203b33;
+  --muted: #6a7772;
+  --line: #e0e7e3;
+  font-family: Arial, sans-serif;
+}
+.planning-header {
+  background: #fff;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: 15px 32px;
+}
+.planning-header .planning-brand {
+  color: #193e31;
+  font-size: 27px;
+  gap: 16px;
+}
+.planning-brand span {
+  color: var(--muted);
+}
+.planning-header nav {
+  gap: 6px;
+}
+.planning-header nav a {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 9px 12px;
+  border-radius: 6px;
+}
+.planning-header nav a:hover {
+  background: #f1f5f2;
+}
+.planning-header nav a[aria-current="page"] {
+  color: #1e5c43;
+  background: #eaf2ed;
+  font-weight: 700;
+}
+.planning-main {
+  max-width: 1720px;
+  padding: 24px 32px;
+}
+.planning-intro {
+  align-items: center;
+  margin-bottom: 22px;
+  gap: 20px;
+}
+.planning-intro h1 {
+  font-size: 26px;
+  margin: 4px 0 6px;
+  letter-spacing: -0.7px;
+}
+.planning-intro .planning-eyebrow {
+  display: none;
+}
+.planning-intro p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 0;
+}
+.planning-updated {
+  font-size: 10px;
+}
+.planning-updated strong {
+  font-size: 12px;
+}
+.planning-updated > span {
+  font-size: 10px;
+}
+.planning-layout.single-view {
+  display: block;
+}
+.single-view > .planning-selection {
+  position: static;
+  max-height: none;
+  max-width: 860px;
+  margin: auto;
+  padding: 24px;
+}
+.planning-data-tools {
+  padding: 22px;
+  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.planning-data-tools > div:last-child {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.planning-data-tools .auto-sync-status {
+  margin-top: 16px;
+}
+.availability-overview {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.availability-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+.availability-map,
+.availability-summary,
+.availability-matrix-panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 0;
+}
+.availability-map {
+  display: flex;
+  flex-direction: column;
+}
+.availability-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.availability-map-header strong {
+  font-size: 14px;
+  white-space: nowrap;
+}
+.availability-map-header strong > span {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  margin-left: 10px;
+}
+.availability-map-header > div {
+  display: flex;
+  gap: 7px;
+}
+.planning-app .availability-map-header select {
+  margin: 0;
+  border-color: var(--line);
+  padding: 5px 7px;
+  font-size: 11px;
+  max-width: 170px;
+}
+.availability-map iframe {
+  border: 0;
+  width: 100%;
+  height: 340px;
+  flex: 1;
+  min-height: 300px;
+  display: block;
+  background: #dbe4e0;
+}
+.availability-map-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--muted);
+  padding: 10px 14px;
+  align-items: center;
+}
+.availability-map-foot a {
+  white-space: nowrap;
+  text-decoration: none;
+}
+.availability-summary {
+  padding: 22px 24px 18px;
+}
+.availability-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.availability-summary-head .planning-eyebrow {
+  font-size: 10px;
+  margin: 0;
+  letter-spacing: 1px;
+}
+.planning-app .availability-summary-head button {
+  border: 0;
+  padding: 0;
+  font-size: 11px;
+  background: none;
+  color: #246449;
+  white-space: nowrap;
+}
+.availability-primary-stat {
+  padding: 19px 0 20px;
+}
+.availability-primary-stat > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.availability-primary-stat > strong {
+  display: block;
+  font-size: 59px;
+  letter-spacing: -2px;
+  line-height: 1.15;
+  margin-top: 2px;
+  font-weight: 500;
+  color: #215f45;
+}
+.availability-primary-stat strong small {
+  font-size: 19px;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #618171;
+}
+.availability-primary-stat p {
+  color: var(--muted);
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.availability-secondary-stat {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  gap: 20px;
+}
+.availability-secondary-stat > div > span,
+.availability-secondary-stat > div > small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+}
+.availability-secondary-stat strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 3px 0;
+}
+.availability-secondary-stat strong small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.availability-best-day {
+  margin: 17px 0 0;
+}
+.availability-best-day > span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.availability-best-day > strong {
+  display: block;
+  font-size: 14px;
+  margin: 4px 0;
+  font-weight: 600;
+}
+.availability-best-day > small {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+  line-height: 1.5;
+}
+.availability-summary-note {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 13px 0 0;
+}
+.availability-matrix-panel {
+  padding: 22px 24px 16px;
+}
+.availability-matrix-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.planning-app .availability-matrix-heading h2 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 5px;
+}
+.availability-matrix-heading p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.availability-switch {
+  display: flex;
+  background: #eff3f0;
+  padding: 3px;
+  border-radius: 7px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.planning-app .availability-switch button {
+  padding: 6px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.planning-app .availability-switch button[aria-pressed="true"] {
+  background: white;
+  color: #245d43;
+  box-shadow: 0 1px 4px #163c2915;
+  font-weight: 600;
+}
+.availability-legend {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin: 19px 0 15px;
+  flex-wrap: wrap;
+}
+.availability-legend > div,
+.availability-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.availability-legend > div > i {
+  width: 100px;
+  height: 8px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    #f6f5ed,
+    #e1e9d6,
+    #b3d2b7,
+    #63a387,
+    #19634d
+  );
+}
+.availability-missing-swatch {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background: #f1f3f3;
+  border: 1px dashed #aebbb4;
+  border-radius: 3px;
+}
+.availability-partial-swatch {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background: repeating-linear-gradient(
+    135deg,
+    #dde7d6,
+    #dde7d6 3px,
+    #fff 3px,
+    #fff 5px
+  );
+  border-radius: 3px;
+}
+.availability-table-scroll {
+  overflow: auto;
+  max-height: 640px;
+  border: 1px solid #e7ece8;
+  border-radius: 8px;
+}
+.planning-app .availability-table {
+  table-layout: fixed;
+  min-width: 1060px;
+  border-spacing: 0;
+}
+.planning-app .availability-table th,
+.planning-app .availability-table td {
+  padding: 4px;
+  border-bottom: 1px solid #edf0ed;
+  text-align: center;
+}
+.planning-app .availability-table thead th {
+  background: #fafcfb;
+  padding: 12px 4px;
+  font-size: 10px;
+  color: #51665b;
+  font-weight: 500;
+  z-index: 2;
+}
+.planning-app .availability-table th:first-child {
+  width: 180px;
+  text-align: left;
+  padding: 12px 14px;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+  border-right: 1px solid var(--line);
+}
+.planning-app .availability-table thead th:first-child {
+  z-index: 3;
+  background: #fafcfb;
+}
+.planning-app .availability-table tbody th button {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+.planning-app .availability-table small {
+  font-size: 9px;
+  color: inherit;
+  opacity: 0.75;
+  line-height: 1.6;
+}
+.planning-app .availability-table tbody th small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 1;
+}
+.planning-app .availability-table .availability-total {
+  width: 110px;
+  background: #fafcfb;
+  border-left: 1px solid var(--line);
+}
+.availability-total strong {
+  font-size: 17px;
+  font-weight: 600;
+}
+.planning-app .availability-cell {
+  display: block;
+  width: 100%;
+  min-height: 53px;
+  padding: 12px 2px;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+}
+.planning-app .availability-cell:hover {
+  filter: brightness(0.97);
+}
+.planning-app .availability-cell[aria-pressed="true"] {
+  border-color: #224d3e;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+.planning-app .availability-cell.missing {
+  font-weight: 400;
+  font-size: 11px;
+  border: 1px dashed #d7dfdb;
+}
+.planning-app .availability-cell.partial {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 6px,
+    #ffffff40 6px,
+    #ffffff40 8px
+  );
+}
+.availability-partial-mark {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.availability-cell-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.availability-cell-detail p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.planning-app .availability-cell-detail button {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.availability-table-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding-top: 13px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.planning-app .availability-table-note button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #246449;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.availability-empty {
+  padding: 30px 15px;
+  margin-top: 12px;
+  background: #f6f9f7;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.availability-empty p {
+  font-size: 12px;
+}
+.availability-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (min-width: 1600px) {
+  .availability-map iframe {
+    min-height: 360px;
+  }
+  .availability-top {
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+  }
+}
+@media (max-width: 1100px) {
+  .availability-map-header strong > span {
+    display: none;
+  }
+  .availability-top {
+    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr);
+    gap: 16px;
+  }
+  .planning-header .planning-brand span {
+    display: none;
+  }
+  .availability-summary {
+    padding: 20px;
+  }
+  .planning-main {
+    padding: 22px;
+  }
+}
+@media (max-width: 760px) {
+  .planning-header {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .planning-header nav {
+    overflow: auto;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    gap: 1px;
+  }
+  .planning-header nav a {
+    font-size: 11px;
+    white-space: nowrap;
+    padding: 8px;
+  }
+  .planning-main {
+    padding: 18px 12px;
+  }
+  .planning-intro {
+    display: block;
+  }
+  .planning-intro h1 {
+    font-size: 24px;
+  }
+  .planning-updated {
+    text-align: left;
+    margin-top: 10px;
+  }
+  .planning-updated > span {
+    display: none;
+  }
+  .availability-top {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .availability-map iframe {
+    min-height: 300px;
+    height: 320px;
+  }
+  .availability-map-header {
+    padding: 12px;
+  }
+  .planning-app .availability-map-header select {
+    max-width: 150px;
+  }
+  .availability-map-foot {
+    align-items: flex-start;
+  }
+  .availability-summary {
+    padding: 20px;
+  }
+  .availability-primary-stat > strong {
+    font-size: 49px;
+  }
+  .availability-primary-stat {
+    padding: 14px 0;
+  }
+  .availability-matrix-panel {
+    padding: 18px 12px 14px;
+  }
+  .availability-matrix-heading {
+    align-items: flex-start;
+  }
+  .availability-matrix-heading p {
+    max-width: 230px;
+  }
+  .planning-app .availability-switch button {
+    padding: 6px 9px;
+  }
+  .availability-legend {
+    gap: 12px;
+    font-size: 9px;
+  }
+  .availability-cell-detail {
+    display: block;
+  }
+  .availability-cell-detail > button {
+    margin-top: 10px;
+  }
+  .availability-table-note {
+    align-items: flex-start;
+  }
+  .single-view > .planning-selection {
+    padding: 18px;
+  }
+  .planning-footer {
+    padding: 0 16px 20px;
+  }
+  .planning-data-tools {
+    padding: 18px;
+  }
+}
+@media print {
+  .planning-header nav,
+  .availability-map,
+  .availability-summary-head button,
+  .availability-switch,
+  .availability-table-note button {
+    display: none !important;
+  }
+  .availability-top {
+    display: block;
+  }
+  .availability-summary {
+    break-inside: avoid;
+  }
+  .availability-table-scroll {
+    overflow: visible;
+    max-height: none;
+  }
+  .planning-app .availability-table {
+    min-width: 0;
+    table-layout: auto;
+  }
+  .planning-app .availability-table th:first-child {
+    position: static;
+    width: 110px;
+  }
+  .planning-app .availability-cell {
+    min-height: 30px;
+    font-size: 9px;
+    padding: 7px 1px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .planning-app .availability-table .availability-total {
+    width: auto;
+  }
+  .availability-table th,
+  .availability-table td {
+    padding: 2px !important;
+  }
+  .availability-matrix-panel {
+    padding: 12px 0;
+    overflow: visible;
+  }
+  .availability-table small {
+    font-size: 7px !important;
+  }
+}
+
+.availability-overview svg {
+  vertical-align: middle;
+}

@@ -1,24 +1,14 @@
-import { readState, mutateState } from "@/persistence/store";
+import { createDataRunner } from "@/jobs/data-runner";
+import { readState, mutateState, mergeClimateBatch } from "@/persistence/store";
 import { parsePivots } from "@/domain/import";
 import { syncPivots } from "@/domain/sync-pivots";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { localDate, locationWarning } from "@/domain/types";
-import {
-  EnsoIndex,
-  ForecastGrid,
-  PUBLIC_WEATHER_BOUNDS,
-  publicGridPoints,
-} from "@/domain/seasonal";
-import { operationalSync } from "./operational-sync";
-import {
-  loadEnso,
-  loadGridBatch,
-  loadLongHistory,
-  loadSeasonal,
-  readLongCache,
-  writeLongCache,
-} from "./long-range";
-import { createSyncRunner, SyncTask } from "./sync-runner";
+import { EnsoIndex } from "@/domain/seasonal";
+import { loadEnso, readLongCache } from "./long-range";
+import { loadHistoryYearBatch } from "./history-batch";
+import { fairEnsembleOrder } from "./ensemble-order";
+import { SyncTask } from "./sync-runner";
 
 const fresh = (date: string | undefined, hours: number) => {
   const age = date ? Date.now() - Date.parse(date) : NaN;
@@ -26,7 +16,7 @@ const fresh = (date: string | undefined, hours: number) => {
 };
 
 async function plan(): Promise<SyncTask[]> {
-  let state = await readState();
+  let state = await readState({ purpose: "planning" });
   // Seed only an empty installation. Existing equipment, edits and work status stay intact.
   if (!state.pivots.length) {
     autoSync.status.message = "Importando equipos de Google My Maps";
@@ -48,16 +38,19 @@ async function plan(): Promise<SyncTask[]> {
     );
     if (!incoming.length)
       throw new Error("El mapa de origen no devolvió equipos.");
-    await mutateState((s) => {
-      // Another tab or a manual import may have seeded the installation meanwhile.
-      if (!s.pivots.length) s.pivots = syncPivots(s.pivots, incoming).pivots;
-    });
-    state = await readState();
+    await mutateState(
+      (s) => {
+        // Another tab or a manual import may have seeded the installation meanwhile.
+        if (!s.pivots.length) s.pivots = syncPivots(s.pivots, incoming).pivots;
+      },
+      { namespaces: ["settings", "pivot"] },
+    );
+    state = await readState({ purpose: "planning" });
   }
   const points = [
     ...new Map(
       state.pivots
-        .filter((p) => !locationWarning(p))
+        .filter((p) => !locationWarning(p) && p.status !== "TERMINADO")
         .map((p) => [cellKey(p.lat, p.lon), p]),
     ).entries(),
   ];
@@ -76,109 +69,38 @@ async function plan(): Promise<SyncTask[]> {
       },
     });
   }
-  tasks.push({
-    label: "Actualizando pronóstico de corto plazo",
-    run: async () => {
-      await operationalSync.start();
-      // The status endpoint reads this lane's live errors directly. Copying
-      // them into a long-running historical job would keep resolved errors visible.
-    },
-  });
-  const old = await readLongCache<ForecastGrid>("grid");
-  const grid: ForecastGrid =
-    old && old.start === localDate() && old.end === state.rules.deadline
-      ? { ...old, bounds: PUBLIC_WEATHER_BOUNDS, coarseStep: 2 }
-      : {
-          bounds: PUBLIC_WEATHER_BOUNDS,
-          step: 1,
-          coarseStep: 2,
-          start: localDate(),
-          end: state.rules.deadline,
-          fetchedAt: new Date().toISOString(),
-          nodes: [],
-          model: "Open-Meteo corto plazo / ECMWF EC46 / SEAS5 ensemble mean",
-          errors: [],
-        };
-  const missing = publicGridPoints().filter(
-    (p) =>
-      !grid.nodes.some(
-        (n) =>
-          n.lat === p.lat &&
-          n.lon === p.lon &&
-          Object.values(n.days).some((d) => d.wind !== null && d.rain !== null),
-      ),
-  );
-  for (let i = 0; i < missing.length; i += 8) {
-    const batch = missing.slice(i, i + 8);
-    tasks.push({
-      label: `Mapa de lluvia y viento · ${Math.min(i + 8, missing.length)}/${missing.length} puntos pendientes`,
-      run: async () => {
-        try {
-          const nodes = await loadGridBatch(batch, state.rules.deadline);
-          // Read the latest cache so automatic imports don't overwrite manual updates.
-          const latest = await readLongCache<ForecastGrid>("grid");
-          const next =
-            latest?.start === grid.start && latest.end === grid.end
-              ? latest
-              : grid;
-          next.nodes = next.nodes
-            .filter(
-              (n) => !nodes.some((p) => p.lat === n.lat && p.lon === n.lon),
-            )
-            .concat(nodes);
-          next.fetchedAt = new Date().toISOString();
-          await writeLongCache("grid", next);
-        } finally {
-          await new Promise((resolve) => setTimeout(resolve, 8000));
-        }
-      },
-    });
+  const ordered = fairEnsembleOrder(points, (key) => !!state.climate?.[key]);
+  const last = Number(localDate().slice(0, 4)) - 1;
+  // One recent season for every location before proceeding to the next year.
+  // This yields an initial ten-year baseline everywhere before extending to 45.
+  for (let offset = 0; offset < 45; offset++) {
+    const year = last - offset;
+    const missing = ordered.filter(
+      ([key]) =>
+        state.climate?.[key]?.rulesSignature !== signature ||
+        !state.climate[key].years.includes(year),
+    );
+    for (let i = 0; i < missing.length; i += 6) {
+      const batch = missing
+        .slice(i, i + 6)
+        .map(([key, p]) => ({ key, lat: p.lat, lon: p.lon }));
+      tasks.push({
+        label: `Referencia histórica ${year} · ${Math.min(i + 6, missing.length)}/${missing.length} ubicaciones · ${offset < 10 ? "base inicial de 10 años" : "ampliando a 45 años"}`,
+        run: async () => {
+          const results = await loadHistoryYearBatch(batch, year, state.rules);
+          await mergeClimateBatch(results, signature);
+        },
+      });
+    }
   }
-  for (const [key, p] of points) {
-    const history = state.climate?.[key];
-    const needsHistory =
-      !history ||
-      history.rulesSignature !== signature ||
-      history.years.length !== 45 ||
-      history.years.at(-1) !== Number(localDate().slice(0, 4)) - 1;
-    const forecast = state.seasonal?.[key];
-    if (
-      !needsHistory &&
-      fresh(forecast?.fetchedAt, 12) &&
-      forecast?.rulesSignature === signature &&
-      !forecast.errors.length &&
-      forecast.days[state.rules.deadline]
-    )
-      continue;
-    tasks.push({
-      label: `${needsHistory ? "Históricos ERA5 y pronóstico" : "Pronóstico hasta fin de año"} · zona ${key}`,
-      run: async () => {
-        const h = needsHistory
-          ? await loadLongHistory(
-              key,
-              p.lat,
-              p.lon,
-              state.rules,
-              await loadEnso(),
-            )
-          : history;
-        // Persist history before requesting the forecast, so a forecast failure cannot lose it.
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.climate ??= {})[key] = h;
-        });
-        const result = await loadSeasonal(key, p.lat, p.lon, state.rules, h);
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.seasonal ??= {})[key] = result;
-        });
-        if (result.errors.length) throw new Error(result.errors.join(" · "));
-      },
-    });
-  }
+  // Seasonal forecasts have an independent lane once sufficient history is
+  // available. NOAA is a separate diagnostic and cannot block ERA5 imports.
   return tasks;
 }
 const shared = globalThis as unknown as {
-  climatoAutoSync?: ReturnType<typeof createSyncRunner>;
+  climatoAutoSync?: ReturnType<typeof createDataRunner>;
 };
-export const autoSync = (shared.climatoAutoSync ??= createSyncRunner(plan));
+export const autoSync = (shared.climatoAutoSync ??= createDataRunner(
+  "history",
+  plan,
+));

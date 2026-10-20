@@ -4,9 +4,10 @@ import "./globals.css";
 import "./console.css";
 import DevAutoReload from "@/components/DevAutoReload";
 export const metadata: Metadata = {
-  title: "Climato · Viabilidad climática",
+  title: "Climato · Planificación de uniformidades",
+  robots: { index: false, follow: false },
   description:
-    "Disponibilidad climática para completar los ensayos antes de fin de año.",
+    "Planificación de ensayos por ubicación, escenarios de días aptos y validación de pronósticos.",
 };
 export default function RootLayout({
   children,

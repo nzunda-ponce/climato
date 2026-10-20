@@ -39,13 +39,16 @@ export async function POST(req: Request) {
     const pivots = parsePivots(bytes, filename);
     let added = 0;
     let updated = 0;
-    await mutateState((s) => {
-      const result = syncPivots(s.pivots, pivots);
-      s.pivots = result.pivots;
-      added = result.added;
-      updated = result.changedIds.length;
-      for (const id of result.changedIds) delete s.forecasts[id];
-    });
+    await mutateState(
+      (s) => {
+        const result = syncPivots(s.pivots, pivots);
+        s.pivots = result.pivots;
+        added = result.added;
+        updated = result.changedIds.length;
+        for (const id of result.changedIds) delete s.forecasts[id];
+      },
+      { namespaces: ["settings", "pivot", "forecast"] },
+    );
     return NextResponse.json({ added, updated, total: pivots.length });
   } catch (e) {
     return NextResponse.json(

@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
-import { gzipSync } from "node:zlib";
-import { loadSeasonal } from "../src/providers/long-range";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { closeDatabase } from "../src/persistence/store";
+import { loadSeasonal, writeLongCache } from "../src/providers/long-range";
 import {
   dailyCapacity,
   HistoricalClimate,
@@ -11,6 +13,22 @@ import {
 import { addDays, defaultRules, localDate } from "../src/domain/types";
 
 test("seasonal predictions use dry trial labels instead of rejecting any rain in the day", async (t) => {
+  const dir = await fs.mkdtemp(path.join(tmpdir(), "climato-seasonal-")),
+    cwd = process.cwd();
+  const oldUrl = process.env.DATABASE_URL,
+    oldPath = process.env.CLIMATO_SQLITE_PATH;
+  process.env.DATABASE_URL = "";
+  process.env.CLIMATO_SQLITE_PATH = path.join(dir, "test.sqlite");
+  process.chdir(dir);
+  t.after(async () => {
+    await closeDatabase();
+    process.chdir(cwd);
+    if (oldUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = oldUrl;
+    if (oldPath === undefined) delete process.env.CLIMATO_SQLITE_PATH;
+    else process.env.CLIMATO_SQLITE_PATH = oldPath;
+    await fs.rm(dir, { recursive: true, force: true });
+  });
   const today = localDate(),
     target = addDays(today, 1);
   const rules = { ...defaultRules, deadline: addDays(today, 2) };
@@ -48,19 +66,17 @@ test("seasonal predictions use dry trial labels instead of rejecting any rain in
     )
     .concat(`${addDays(target, 1)}T00:00`);
   let previousRain = 0;
-  t.mock.method(fs, "readFile", async () =>
-    gzipSync(
-      JSON.stringify({
-        fetchedAt: new Date().toISOString(),
-        end: addDays(rules.deadline, 1),
-        hourly: {
-          time: times,
-          wind_speed_10m: times.map(() => 10),
-          precipitation: [0, previousRain, 0, 0, 0, 6, 0, 0, 0],
-        },
-      }),
-    ),
-  );
+  const cache = async () =>
+    writeLongCache("seasonal-test", {
+      fetchedAt: new Date().toISOString(),
+      end: addDays(rules.deadline, 1),
+      hourly: {
+        time: times,
+        wind_speed_10m: times.map(() => 10),
+        precipitation: [0, previousRain, 0, 0, 0, 6, 0, 0, 0],
+      },
+    });
+  await cache();
   const network = t.mock.method(globalThis, "fetch", async () => {
     throw new Error("Cached data must not be downloaded again");
   });
@@ -68,6 +84,7 @@ test("seasonal predictions use dry trial labels instead of rejecting any rain in
   assert.ok(result.days[target].probability! > 0.99);
   assert.ok(result.days[target].slots! > 2.99);
   previousRain = 15;
+  await cache();
   assert.equal(
     (await loadSeasonal("test", -38, -58, rules, history)).days[target]
       .probability,

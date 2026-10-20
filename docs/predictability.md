@@ -1,3 +1,5 @@
+> Desde la reforma de planificación, la pantalla principal usa el mapa oficial de Windy; la malla propia descrita más abajo queda sólo como implementación anterior. El análisis actual se consulta por coordenada de equipo (cinco decimales), no por celda de 0,25°. Véase [README](../README.md) para el flujo vigente, los umbrales de evidencia, las rachas consecutivas y la matriz operativa móvil de 30 días. La validación interna de análogos descrita aquí se conserva separada de la verificación prospectiva del pronóstico.
+
 # Previsibilidad, fuentes y límites
 
 ## Cadena de pronóstico hasta diciembre

@@ -1,30 +1,50 @@
-import { readState, mutateState, saveSnapshot } from "@/persistence/store";
+import { createDataRunner } from "@/jobs/data-runner";
+import {
+  readState,
+  mutateState,
+  saveSnapshot,
+  readForecastTimes,
+  readClimate,
+} from "@/persistence/store";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { locationWarning } from "@/domain/types";
 import { isFresh } from "@/domain/opportunity-report";
-import { loadEnsemble } from "./research";
+import { fairEnsembleOrder } from "./ensemble-order";
+import { loadEnsembleBatch } from "./research";
 import { OpenMeteoProvider } from "./weather";
 import { loadSeasonal } from "./long-range";
-import { createSyncRunner, SyncTask } from "./sync-runner";
+import { SyncTask } from "./sync-runner";
 const fresh = (date: string | undefined, hours: number) =>
   isFresh(date, Date.now(), hours);
 async function plan() {
-  const state = await readState();
+  const state = await readState({ purpose: "planning" });
+  if (!state.pivots.length) return [];
+  const forecastTimes = await readForecastTimes();
   const signature = rulesSignature(state.rules);
   const points = [
     ...new Map(
       state.pivots
-        .filter((p) => !locationWarning(p))
+        .filter((p) => !locationWarning(p) && p.status !== "TERMINADO")
         .map((p) => [cellKey(p.lat, p.lon), p]),
     ).entries(),
   ];
-  const tasks: SyncTask[] = [];
+  const tasks: SyncTask[] = [
+    {
+      label: "Archivando estimaciones para validación",
+      run: () =>
+        mutateState(() => {}, { namespaces: ["settings", "ensemble"] }),
+    },
+  ];
+  const weatherTasks: SyncTask[] = [];
   const weather = state.pivots.filter(
-    (p) => !locationWarning(p) && !fresh(state.forecasts[p.id]?.fetchedAt, 1),
+    (p) =>
+      !locationWarning(p) &&
+      p.status !== "TERMINADO" &&
+      !fresh(forecastTimes[p.id], 1),
   );
   for (let i = 0; i < weather.length; i += 15) {
     const batch = weather.slice(i, i + 15);
-    tasks.push({
+    weatherTasks.push({
       label: `Meteorología de equipos · ${Math.min(i + 15, weather.length)}/${weather.length}`,
       run: async () => {
         const results = await new OpenMeteoProvider().forecastMany(batch);
@@ -32,20 +52,23 @@ async function plan() {
           if (results[j]?.models.length)
             await saveSnapshot(batch[j].id, results[j]);
         }
-        await mutateState((s) => {
-          batch.forEach((p, j) => {
-            if (
-              results[j]?.models.length &&
-              s.pivots.some(
-                (current) =>
-                  current.id === p.id &&
-                  current.lat === p.lat &&
-                  current.lon === p.lon,
+        await mutateState(
+          (s) => {
+            batch.forEach((p, j) => {
+              if (
+                results[j]?.models.length &&
+                s.pivots.some(
+                  (current) =>
+                    current.id === p.id &&
+                    current.lat === p.lat &&
+                    current.lon === p.lon,
+                )
               )
-            )
-              s.forecasts[p.id] = results[j];
-          });
-        });
+                s.forecasts[p.id] = results[j];
+            });
+          },
+          { namespaces: ["settings", "pivot", "forecast"] },
+        );
         if (
           results.length !== batch.length ||
           results.some((r) => !r.models.length)
@@ -56,28 +79,59 @@ async function plan() {
       },
     });
   }
-  // Bring useful short-term windows in first, before the much larger historical download.
-  for (const [key, p] of points) {
-    const cached = state.ensembles?.[key];
-    if (
-      fresh(cached?.fetchedAt, 3) &&
-      cached?.rulesSignature === signature &&
-      cached.sources.some((s) => s.usableMembers > 0) &&
-      !cached.errors.length
-    )
-      continue;
+  // Missing locations first, interleaved by work region so no region waits
+  // behind all the equipment in another region. Coordinate requests are batched.
+  const pending = points.filter(([key]) => {
+    const e = state.ensembles?.[key];
+    return (
+      !fresh(e?.fetchedAt, 3) ||
+      e?.rulesSignature !== signature ||
+      !!e.errors.length
+    );
+  });
+  const ordered = fairEnsembleOrder(pending, (key) => !!state.ensembles?.[key]);
+  for (let i = 0; i < ordered.length; i += 6) {
+    const batch = ordered
+      .slice(i, i + 6)
+      .map(([key, p]) => ({ key, lat: p.lat, lon: p.lon }));
     tasks.push({
-      label: `Pronóstico de corto plazo · zona ${key}`,
+      label: `Estimación integrada · ${Math.min(i + 6, ordered.length)}/${ordered.length} ubicaciones`,
       run: async () => {
-        const result = await loadEnsemble(key, p.lat, p.lon, state.rules);
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.ensembles ??= {})[key] = result;
-        });
-        if (result.errors.length) throw new Error(result.errors.join(" · "));
+        const results = await loadEnsembleBatch(batch, state.rules);
+        await mutateState(
+          (s) => {
+            if (rulesSignature(s.rules) !== signature) return;
+            for (const result of results) {
+              if (
+                !s.pivots.some(
+                  (p) => cellKey(p.lat, p.lon) === result.point.key,
+                )
+              )
+                continue;
+              if (result.assessment)
+                (s.ensembles ??= {})[result.point.key] = result.assessment;
+              if (result.error)
+                (s.ensembleFailures ??= {})[result.point.key] = {
+                  at: new Date().toISOString(),
+                  message: result.error,
+                };
+              else if (s.ensembleFailures)
+                delete s.ensembleFailures[result.point.key];
+            }
+          },
+          { namespaces: ["settings", "pivot", "ensemble", "ensemble-failure"] },
+        );
+        const errors = results.filter((r) => r.error);
+        if (errors.length)
+          throw new Error(
+            errors.some((r) => /HTTP 429/.test(r.error ?? ""))
+              ? "HTTP 429: el proveedor limitó las solicitudes. Se pausa la descarga para respetar su límite."
+              : `${errors.length} ubicaciones con descargas incompletas: ${[...new Set(errors.map((r) => r.error))].slice(0, 3).join(" · ")}`,
+          );
       },
     });
   }
+  tasks.push(...weatherTasks);
   // Refresh already trained zones without waiting for the initial ERA5 import
   // or the public map grid to finish in the background lane.
   for (const [key, p] of points) {
@@ -104,12 +158,15 @@ async function plan() {
           p.lat,
           p.lon,
           state.rules,
-          history,
+          (await readClimate(key)) ?? history,
         );
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.seasonal ??= {})[key] = result;
-        });
+        await mutateState(
+          (s) => {
+            if (rulesSignature(s.rules) === signature)
+              (s.seasonal ??= {})[key] = result;
+          },
+          { namespaces: ["settings", "seasonal"] },
+        );
         if (result.errors.length) throw new Error(result.errors.join(" · "));
       },
     });
@@ -117,7 +174,7 @@ async function plan() {
   return tasks;
 }
 const shared = globalThis as unknown as {
-  climatoOperationalSync?: ReturnType<typeof createSyncRunner>;
+  climatoOperationalSync?: ReturnType<typeof createDataRunner>;
 };
 export const operationalSync = (shared.climatoOperationalSync ??=
-  createSyncRunner(plan));
+  createDataRunner("weather", plan));

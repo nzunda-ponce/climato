@@ -15,3 +15,8 @@ data/*.png
 docs/*preview*.png
 docs/*preview*.jpg
 *.tsbuildinfo
+
+.env.local
+.env.*.local
+data/*.sqlite*
+data/backups/

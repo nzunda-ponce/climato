@@ -5,6 +5,7 @@ import {
   HistoricalClimate,
   MemberPath,
   rulesSignature,
+  usableMemberGroups,
 } from "./evidence";
 import { SeasonalAssessment } from "./seasonal";
 import {
@@ -23,6 +24,7 @@ export interface ReportState {
   rules: Rules;
   forecasts: Record<string, WeatherForecast>;
   ensembles?: Record<string, EnsembleAssessment>;
+  ensembleFailures?: Record<string, { at: string; message: string }>;
   climate?: Record<string, HistoricalClimate>;
   seasonal?: Record<string, SeasonalAssessment>;
 }
@@ -48,26 +50,22 @@ export function scenarioDayCounts(
   paths: MemberPath[],
   dates: string[],
   reference?: string,
+  measure: (path: MemberPath, dates: string[]) => number = (path, dates) =>
+    dates.filter((date) => path.days[date]! > 0).length,
 ) {
   if (!dates.length) return null;
-  const families = [...new Set(paths.map((p) => p.family))];
-  if (families.length < 2) return null;
   const required = reference ? [reference, ...dates] : dates;
+  const eligible = usableMemberGroups(paths, required);
+  if (eligible.length < 2) return null;
+  const families = eligible.map((g) => g.family);
   const weighted: { count: number; weight: number; family: string }[] = [];
   let completeSamples = 0;
-  for (const family of families) {
-    const group = paths.filter((p) => p.family === family);
-    const complete = group.filter((p) =>
-      required.every((date) => validCount(p.days[date])),
-    );
-    // A distribution from a few surviving members would look more certain than it is.
-    if (complete.length < 10 || complete.length / group.length < 0.8)
-      return null;
+  for (const { family, complete } of eligible) {
     completeSamples += complete.length;
     for (const p of complete) {
       if (reference && p.days[reference]! <= 0) continue;
       weighted.push({
-        count: dates.filter((date) => p.days[date]! > 0).length,
+        count: measure(p, dates),
         weight: 1 / families.length / complete.length,
         family,
       });
@@ -97,6 +95,29 @@ export function scenarioDayCounts(
     completeSamples,
     availableSamples: paths.length,
   };
+}
+
+// For a selected apt reference day, measure the continuous run immediately
+// after it. Otherwise measure the longest run anywhere in the selected period.
+export function scenarioConsecutiveDays(
+  paths: MemberPath[],
+  dates: string[],
+  reference?: string,
+) {
+  return scenarioDayCounts(paths, dates, reference, (path, dates) => {
+    let run = 0,
+      longest = 0;
+    for (const date of dates) {
+      if (path.days[date]! > 0) {
+        run++;
+        longest = Math.max(longest, run);
+      } else {
+        if (reference) break;
+        run = 0;
+      }
+    }
+    return reference ? run : longest;
+  });
 }
 
 export function summarizeReportPeriod(
@@ -199,13 +220,10 @@ export function buildOpportunityReport(state: ReportState, now = new Date()) {
           if (validCount(p.days[day.date])) g.usable++;
           groups.set(p.family, g);
         }
-        const usable = [...groups.values()].filter((g) => g.usable > 0);
-        const supported =
-          day.source === "pronóstico" &&
-          usable.length >= 2 &&
-          [...groups.values()].every(
-            (g) => g.usable >= 10 && g.usable / g.total >= 0.8,
-          );
+        const usable = [...groups.values()].filter(
+          (g) => g.usable >= 10 && g.usable / g.total >= 0.8,
+        );
+        const supported = day.source === "pronóstico" && usable.length >= 2;
         const near = day.date <= end7;
         const nextEnd = [addDays(day.date, 7), end14].sort()[0];
         const followingDays = reportDates(addDays(day.date, 1), nextEnd);

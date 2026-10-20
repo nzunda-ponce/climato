@@ -84,6 +84,12 @@ export interface Window {
   members: number;
   families?: number;
   basis?: "ensemble" | "model-agreement";
+  familyEvidence?: {
+    family: string;
+    total: number;
+    usable: number;
+    favorable: number;
+  }[];
   coverage?: number;
   spread?: number;
   windRainAgreement?: number;

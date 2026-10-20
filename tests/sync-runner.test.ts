@@ -127,3 +127,92 @@ test("changing rules cancels remaining stale tasks and allows recalculation with
   await runner.start();
   assert.equal(calls, 2);
 });
+
+test("persistent failures back off and invalidation allows an immediate retry", async () => {
+  let time = 0,
+    calls = 0;
+  const runner = createSyncRunner(
+    async () => {
+      calls++;
+      throw new Error("offline");
+    },
+    () => time,
+  );
+  for (const delay of [5, 10, 20, 40, 80, 160, 320, 360]) {
+    await runner.start();
+    assert.equal(runner.status.retryAt, time + delay * 60000);
+    time += delay * 60000;
+  }
+  assert.equal(calls, 8);
+  runner.invalidate();
+  await runner.start();
+  assert.equal(calls, 9);
+  assert.equal(runner.status.retryAt, time + 5 * 60000);
+});
+
+test("bounded worker checkpoints progress and releases its lease before the next invocation", async () => {
+  const snapshots: any[] = [];
+  let runs = 0,
+    releases = 0,
+    published = 0;
+  const runner = createSyncRunner(
+    async () =>
+      Array.from({ length: 5 }, (_, i) => ({
+        label: String(i),
+        run: async () => {
+          runs++;
+        },
+      })),
+    Date.now,
+    async () => async () => {
+      releases++;
+    },
+    {
+      maxTasks: () => 2,
+      onStatus: async (s) => {
+        snapshots.push(structuredClone(s));
+      },
+      afterTask: async () => {
+        published++;
+      },
+    },
+  );
+  await runner.start();
+  assert.equal(runs, 2);
+  assert.equal(published, 2);
+  assert.equal(runner.status.deferred, true);
+  assert.equal(releases, 1);
+  assert.equal(snapshots.at(-1).completed, 2);
+  assert.equal(snapshots.at(-1).running, false);
+});
+test("provider rate limit stops a bulk pass instead of hammering every remaining location", async () => {
+  let attempts = 0;
+  const runner = createSyncRunner(
+    async () =>
+      Array.from({ length: 10 }, (_, i) => ({
+        label: String(i),
+        run: async () => {
+          attempts++;
+          throw new Error("Históricos ERA5: HTTP 429");
+        },
+      })),
+    Date.now,
+    undefined,
+    { stopOnRateLimit: true },
+  );
+  await runner.start();
+  assert.equal(attempts, 1);
+  assert.equal(runner.status.deferred, true);
+  assert.equal(runner.status.errors.length, 1);
+});
+
+test("public job status does not disclose a connection string or provider API key", async () => {
+  const runner = createSyncRunner(async () => {
+    throw new Error(
+      "Connection postgresql://person:private-password@example.test/db?sslmode=require and apikey=test-private-key",
+    );
+  });
+  await runner.start();
+  assert.ok(!runner.status.errors[0].includes("private-password"));
+  assert.ok(!runner.status.errors[0].includes("test-private-key"));
+});

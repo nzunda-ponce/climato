@@ -1,8 +1,4 @@
-import { promises as fs } from "node:fs";
-import { gzipSync, gunzipSync } from "node:zlib";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
-import { replaceFile } from "@/persistence/replace-file";
+import { readCache, writeCache } from "@/persistence/store";
 import { addDays, Hour, localDate, Rules } from "@/domain/types";
 import { dailyRainTotal } from "@/domain/weather-rules";
 import {
@@ -19,27 +15,13 @@ import {
   SeasonalAssessment,
   validateAnalogues,
 } from "@/domain/seasonal";
-const root = path.join(process.cwd(), "data", "long-range");
 export async function readLongCache<T>(name: string): Promise<T | undefined> {
   if (!/^[\w.,-]+$/.test(name)) throw new Error("Nombre de caché inválido");
-  try {
-    return JSON.parse(
-      gunzipSync(
-        await fs.readFile(path.join(root, name + ".json.gz")),
-      ).toString(),
-    ) as T;
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "ENOENT") return;
-    throw e;
-  }
+  return readCache<T>("long-range", name);
 }
 export async function writeLongCache(name: string, value: unknown) {
   if (!/^[\w.,-]+$/.test(name)) throw new Error("Nombre de caché inválido");
-  await fs.mkdir(root, { recursive: true });
-  const target = path.join(root, name + ".json.gz"),
-    temp = target + `.${process.pid}.${randomUUID()}.tmp`;
-  await fs.writeFile(temp, gzipSync(JSON.stringify(value)));
-  await replaceFile(temp, target);
+  await writeCache("long-range", name, value);
 }
 export async function fetchJson(url: URL) {
   for (let i = 0; i < 4; i++) {

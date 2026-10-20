@@ -7,8 +7,9 @@ import {
   Window,
 } from "./types";
 import { previousRainEligible, windowRainEligible } from "./weather-rules";
+// Cache and analysis key per equipment coordinate (~1 m), not a 0.25° regional cell.
 export const cellKey = (lat: number, lon: number) =>
-  `${Math.round(lat * 4) / 4},${Math.round(lon * 4) / 4}`;
+  `${Math.round(lat * 100000) / 100000},${Math.round(lon * 100000) / 100000}`;
 export const rulesSignature = (r: Rules) =>
   JSON.stringify([
     "dry-trial-window-previous-rain-v5",
@@ -37,6 +38,26 @@ export interface MemberPath {
   family: string;
   member: string;
   days: Record<string, number | null>;
+}
+// A source with a shorter horizon must not veto other well-covered sources.
+// Coverage is checked before combining, never by treating missing values as zero.
+export function usableMemberGroups(paths: MemberPath[], dates: string[]) {
+  return [...new Set(paths.map((p) => p.family))]
+    .map((family) => {
+      const all = paths.filter((p) => p.family === family);
+      const complete = all.filter((p) =>
+        dates.every(
+          (date) =>
+            typeof p.days[date] === "number" &&
+            Number.isFinite(p.days[date]) &&
+            p.days[date]! >= 0,
+        ),
+      );
+      return { family, all, complete };
+    })
+    .filter(
+      (g) => g.complete.length >= 10 && g.complete.length / g.all.length >= 0.8,
+    );
 }
 export interface EnsembleAssessment {
   key: string;

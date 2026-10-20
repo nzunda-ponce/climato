@@ -5,9 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    return NextResponse.json(buildOpportunityReport(await readState()), {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      buildOpportunityReport(await readState({ purpose: "planning" })),
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (e) {
     console.error(
       "Informe de oportunidades:",

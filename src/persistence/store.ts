@@ -1,148 +1,375 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { PrismaClient } from "@prisma/client";
-import { defaultRules, Pivot, Rules, WeatherForecast } from "@/domain/types";
+import { isReportServer } from "@/runtime/role";
+import { randomUUID } from "node:crypto";
 import {
+  defaultRules,
+  Pivot,
+  Rules,
+  WeatherForecast,
+  localDate,
+} from "@/domain/types";
+import {
+  cellKey,
   EnsembleAssessment,
   HistoricalClimate,
   Observation,
+  rulesSignature,
 } from "@/domain/evidence";
-import { gzipSync, gunzipSync } from "node:zlib";
-import { replaceFile } from "./replace-file";
 import type { SeasonalAssessment } from "@/domain/seasonal";
-interface State {
+import {
+  freezePredictions,
+  ValidationArchive,
+} from "@/domain/forecast-validation";
+import { mergeHistory } from "@/domain/history-training";
+import {
+  openPostgres,
+  openSqlite,
+  ApplicationDatabase,
+  DatabaseRecord,
+  DatabaseTransaction,
+  RecordQuery,
+} from "./database";
+import {
+  archiveNamespaces,
+  decodeState,
+  encodeState,
+  makeRecord,
+  planningNamespaces,
+  stateNamespaces,
+  unpack,
+} from "./records";
+import { cacheBudget, migrateLegacy } from "./migrate";
+
+export interface State {
+  validationArchive?: ValidationArchive;
   pivots: Pivot[];
   rules: Rules;
   forecasts: Record<string, WeatherForecast>;
   ensembles?: Record<string, EnsembleAssessment>;
+  ensembleFailures?: Record<string, { at: string; message: string }>;
   climate?: Record<string, HistoricalClimate>;
   observations?: Observation[];
   seasonal?: Record<string, SeasonalAssessment>;
 }
-const globalDb = globalThis as unknown as { climatoDb?: PrismaClient };
-const db = process.env.DATABASE_URL
-  ? (globalDb.climatoDb ??= new PrismaClient())
-  : null;
-const dir = path.join(process.cwd(), "data");
-const statePath = path.join(dir, "state.json");
-export async function readState(): Promise<State> {
-  if (db) {
-    const rows = await db.appState.findUnique({ where: { id: "campaign" } });
-    return rows
-      ? {
-          ...(rows.payload as unknown as State),
-          rules: {
-            ...defaultRules,
-            ...(rows.payload as unknown as State).rules,
-          },
-        }
-      : { pivots: [], rules: defaultRules, forecasts: {} };
-  }
-  try {
-    const s = JSON.parse(await fs.readFile(statePath, "utf8")) as State;
-    return { ...s, rules: { ...defaultRules, ...s.rules } };
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
-    return { pivots: [], rules: defaultRules, forecasts: {} };
-  }
+const globalStore = globalThis as unknown as {
+  climatoDatabase?: Promise<ApplicationDatabase>;
+  climatoPlanningCache?: { revision: string; state: State };
+};
+let lastPrune = 0;
+export async function getDatabase() {
+  if (!globalStore.climatoDatabase)
+    globalStore.climatoDatabase = (async () => {
+      const reportOnly = isReportServer();
+      if (reportOnly && !process.env.DATABASE_URL?.trim())
+        throw new Error("El servidor de consulta requiere DATABASE_URL.");
+      const db = process.env.DATABASE_URL?.trim()
+        ? await openPostgres(undefined, {
+            initialize: !reportOnly,
+            readOnly: reportOnly,
+          })
+        : await openSqlite();
+      try {
+        if (reportOnly)
+          return {
+            ...db,
+            transaction: async () => {
+              throw new Error("La web de consulta no modifica datos.");
+            },
+          };
+        await migrateLegacy(db);
+        return db;
+      } catch (e) {
+        await db.close();
+        throw e;
+      }
+    })().catch((e) => {
+      delete globalStore.climatoDatabase;
+      throw e;
+    });
+  return globalStore.climatoDatabase;
+}
+export async function closeDatabase() {
+  const db = await globalStore.climatoDatabase;
+  delete globalStore.climatoDatabase;
+  delete globalStore.climatoPlanningCache;
+  if (db) await db.close();
+}
+export interface ReadOptions {
+  purpose?: "planning" | "full";
+  validation?: boolean;
+  namespaces?: string[];
+}
+export async function readState(options: ReadOptions = {}): Promise<State> {
+  const db = await getDatabase();
+  const namespaces =
+    options.namespaces ??
+    (options.purpose === "planning" ? planningNamespaces : stateNamespaces);
+  return db.read(async (tx) => {
+    const cached =
+      options.purpose === "planning" &&
+      !options.validation &&
+      !options.namespaces;
+    const stamp = cached
+      ? (await tx.get("system", "revision"))?.hash
+      : undefined;
+    if (stamp && globalStore.climatoPlanningCache?.revision === stamp)
+      return structuredClone(globalStore.climatoPlanningCache.state);
+    const state = decodeState(
+      await tx.list({
+        namespaces: [
+          ...namespaces,
+          ...(options.validation ? archiveNamespaces : []),
+        ],
+      }),
+    );
+    if (cached && stamp)
+      globalStore.climatoPlanningCache = {
+        revision: stamp,
+        state: structuredClone(state),
+      };
+    return state;
+  });
+}
+async function revision(tx: DatabaseTransaction) {
+  await tx.put(makeRecord("system", "revision", randomUUID()));
+}
+export async function mutateState(
+  fn: (state: State) => void | Promise<void>,
+  options: { namespaces?: string[] } = {},
+): Promise<void> {
+  const db = await getDatabase();
+  const namespaces = options.namespaces ?? stateNamespaces;
+  await db.transaction(async (tx) => {
+    const before = await tx.list({ namespaces });
+    const state = decodeState(before);
+    await fn(state);
+    const encoded = encodeState(state),
+      old = new Map(before.map((r) => [`${r.namespace}\0${r.key}`, r]));
+    const allowed = new Set(namespaces);
+    const after = encoded.filter(
+      (r) =>
+        allowed.has(r.namespace) || archiveNamespaces.includes(r.namespace),
+    );
+    const changed = after.filter(
+      (r) => old.get(`${r.namespace}\0${r.key}`)?.hash !== r.hash,
+    );
+    const current = new Set(after.map((r) => `${r.namespace}\0${r.key}`));
+    for (const r of before)
+      if (
+        !current.has(`${r.namespace}\0${r.key}`) &&
+        !archiveNamespaces.includes(r.namespace)
+      )
+        await tx.remove(r.namespace, r.key);
+    await tx.putMany(
+      changed.filter((r) => !["prediction", "outcome"].includes(r.namespace)),
+    );
+    await tx.putMany(
+      changed.filter((r) => ["prediction", "outcome"].includes(r.namespace)),
+      true,
+    );
+    const changedEnsembles = allowed.has("ensemble")
+      ? Object.values(state.ensembles ?? {})
+      : [];
+    if (changedEnsembles.length) {
+      const archive: ValidationArchive = { predictions: [], outcomes: [] };
+      freezePredictions(
+        archive,
+        Object.fromEntries(changedEnsembles.map((e) => [e.key, e])),
+        state.rules,
+      );
+      await tx.putMany(
+        encodeState({
+          ...state,
+          pivots: [],
+          forecasts: {},
+          ensembles: {},
+          climate: {},
+          seasonal: {},
+          observations: [],
+          validationArchive: archive,
+        }).filter((r) => r.namespace === "prediction"),
+        true,
+      );
+    }
+    if (changed.length || before.length !== after.length) await revision(tx);
+    if (Date.now() - lastPrune > 3600000) {
+      await tx.prune(Date.now(), cacheBudget());
+      lastPrune = Date.now();
+    }
+  });
+}
+export async function readCache<T>(
+  kind: "research" | "long-range",
+  key: string,
+): Promise<T | undefined> {
+  const db = await getDatabase();
+  return db.read(async (tx) => {
+    const r = await tx.get(`cache:${kind}`, key);
+    return r && (r.expiresAt === null || r.expiresAt > Date.now())
+      ? unpack<T>(r)
+      : undefined;
+  });
+}
+export async function writeCache(
+  kind: "research" | "long-range",
+  key: string,
+  value: unknown,
+) {
+  const db = await getDatabase();
+  await db.transaction(async (tx) => {
+    await tx.put(
+      makeRecord(`cache:${kind}`, key, value, {
+        expiresAt:
+          kind === "research" && key.startsWith("ensemble-")
+            ? Date.now() + 7 * 86400000
+            : null,
+      }),
+    );
+    if (Date.now() - lastPrune > 60000) {
+      await tx.prune(Date.now(), cacheBudget());
+      lastPrune = Date.now();
+    }
+  });
 }
 export async function saveResearchRaw(
   key: string,
   kind: "ensemble" | "history",
   value: unknown,
 ) {
-  await fs.mkdir(path.join(dir, "research"), { recursive: true });
-  await fs.writeFile(
-    path.join(
-      dir,
-      "research",
-      `${kind}-${key.replace(/[^\d,.-]/g, "")}.json.gz`,
-    ),
-    gzipSync(JSON.stringify(value)),
+  await writeCache(
+    "research",
+    `${kind}-${key.replace(/[^\d,.-]/g, "")}`,
+    value,
   );
 }
 export async function readResearchRaw<T>(
   key: string,
   kind: "ensemble" | "history",
-): Promise<T | undefined> {
-  try {
-    return JSON.parse(
-      gunzipSync(
-        await fs.readFile(
-          path.join(
-            dir,
-            "research",
-            `${kind}-${key.replace(/[^\d,.-]/g, "")}.json.gz`,
-          ),
-        ),
-      ).toString(),
-    );
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw e;
-  }
-}
-let queue = Promise.resolve();
-export async function mutateState(
-  fn: (state: State) => void | Promise<void>,
-): Promise<void> {
-  const task = queue.then(async () => {
-    await fs.mkdir(dir, { recursive: true });
-    const lockPath = path.join(dir, "state.lock");
-    let lock: Awaited<ReturnType<typeof fs.open>> | undefined;
-    for (let attempt = 0; attempt < 300 && !lock; attempt++) {
-      try {
-        lock = await fs.open(lockPath, "wx");
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-    if (!lock)
-      throw new Error(
-        "El almacenamiento está ocupado. Reintentá en unos segundos.",
-      );
-    try {
-      const state = await readState();
-      await fn(state);
-      if (db) {
-        await db.appState.upsert({
-          where: { id: "campaign" },
-          create: {
-            id: "campaign",
-            payload: JSON.parse(JSON.stringify(state)),
-          },
-          update: { payload: JSON.parse(JSON.stringify(state)) },
-        });
-      } else {
-        await fs.mkdir(dir, { recursive: true });
-        const temp = statePath + `.${process.pid}.tmp`;
-        await fs.writeFile(temp, JSON.stringify(state, null, 2));
-        await replaceFile(temp, statePath);
-      }
-    } finally {
-      await lock.close();
-      await fs.unlink(lockPath);
-    }
-  });
-  queue = task.catch(() => {});
-  return task;
+) {
+  return readCache<T>("research", `${kind}-${key.replace(/[^\d,.-]/g, "")}`);
 }
 export async function saveSnapshot(pivotId: string, forecast: WeatherForecast) {
   if (!forecast.models.length) return;
-  if (db) {
-    await db.forecastSnapshot.create({
-      data: {
-        pivotRef: pivotId,
-        fetchedAt: new Date(forecast.fetchedAt),
-        payload: JSON.parse(JSON.stringify(forecast)),
-      },
-    });
-    return;
-  }
-  await fs.mkdir(path.join(dir, "snapshots"), { recursive: true });
-  await fs.writeFile(
-    path.join(dir, "snapshots", `${pivotId}-${Date.now()}.json`),
-    JSON.stringify(forecast),
+  const db = await getDatabase();
+  await db.transaction((tx) =>
+    tx.put(
+      makeRecord(
+        "snapshot",
+        `${pivotId}-${localDate(new Date(forecast.fetchedAt))}`,
+        forecast,
+        { expiresAt: Date.parse(forecast.fetchedAt) + 14 * 86400000 },
+      ),
+      true,
+    ),
   );
+}
+export async function mergeClimateBatch(
+  results: HistoricalClimate[],
+  signature: string,
+) {
+  const db = await getDatabase();
+  await db.transaction(async (tx) => {
+    const rule = await tx.get("settings", "rules");
+    const rules = rule ? unpack<Rules>(rule) : defaultRules;
+    if (rulesSignature(rules) !== signature) return;
+    const active = new Set(
+      (await tx.list({ namespaces: ["pivot"] })).map((r) => {
+        const { pivot } = unpack<{ pivot: Pivot }>(r);
+        return cellKey(pivot.lat, pivot.lon);
+      }),
+    );
+    const updates: DatabaseRecord[] = [];
+    for (const h of results) {
+      if (!active.has(h.key) || h.rulesSignature !== signature) continue;
+      const row = await tx.get("climate", h.key),
+        feature = await tx.get("climate-feature", h.key);
+      const previous = row ? unpack<HistoricalClimate>(row) : undefined;
+      if (previous && feature) previous.features = unpack(feature);
+      const merged = mergeHistory(previous, h),
+        { features, ...summary } = merged;
+      updates.push(
+        makeRecord("climate", h.key, summary),
+        makeRecord("climate-feature", h.key, features ?? []),
+      );
+    }
+    await tx.putMany(updates);
+    await revision(tx);
+  });
+}
+export async function readValidationArchive(
+  query: RecordQuery = {},
+): Promise<ValidationArchive> {
+  const db = await getDatabase();
+  return db.read(async (tx) => {
+    const [predictions, outcomes] = await Promise.all([
+      tx.list({ ...query, namespaces: ["prediction"] }),
+      tx.list({ ...query, lead: undefined, namespaces: ["outcome"] }),
+    ]);
+    return {
+      predictions: predictions.map((r) => unpack(r)),
+      outcomes: outcomes.map((r) => unpack(r)),
+    };
+  });
+}
+
+export async function readForecastTimes(): Promise<Record<string, string>> {
+  const db = await getDatabase();
+  return db.read(async (tx) =>
+    Object.fromEntries(
+      (await tx.list({ namespaces: ["forecast"], metadataOnly: true })).map(
+        (r) => [r.key, r.validDate ?? ""],
+      ),
+    ),
+  );
+}
+export async function readClimate(
+  key: string,
+): Promise<HistoricalClimate | undefined> {
+  const db = await getDatabase();
+  return db.read(async (tx) => {
+    const row = await tx.get("climate", key);
+    if (!row) return;
+    const value = unpack<HistoricalClimate>(row),
+      features = await tx.get("climate-feature", key);
+    if (features) value.features = unpack(features);
+    return value;
+  });
+}
+
+// A renewable lease coordinates the three download lanes across server processes.
+// No connection is held while waiting for a weather provider.
+export async function acquireSyncLease(name: string) {
+  const db = await getDatabase(),
+    token = randomUUID();
+  const acquired = await db.transaction(async (tx) => {
+    const previous = await tx.get("lease", name);
+    if (previous && unpack<{ until: number }>(previous).until > Date.now())
+      return false;
+    await tx.put(
+      makeRecord("lease", name, { token, until: Date.now() + 180000 }),
+    );
+    return true;
+  });
+  if (!acquired) return undefined;
+  const timer = setInterval(() => {
+    void db
+      .transaction(async (tx) => {
+        const current = await tx.get("lease", name);
+        if (current && unpack<{ token: string }>(current).token === token)
+          await tx.put(
+            makeRecord("lease", name, { token, until: Date.now() + 180000 }),
+          );
+      })
+      .catch(() => {
+        /* Expiry permits recovery after a disconnected process. */
+      });
+  }, 60000);
+  timer.unref();
+  return async () => {
+    clearInterval(timer);
+    await db.transaction(async (tx) => {
+      const current = await tx.get("lease", name);
+      if (current && unpack<{ token: string }>(current).token === token)
+        await tx.remove("lease", name);
+    });
+  };
 }

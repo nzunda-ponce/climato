@@ -89,7 +89,7 @@ export async function loadEnsemble(
           longitude: String(lon),
           models: source.model,
           hourly: "wind_speed_10m,wind_gusts_10m,precipitation",
-          forecast_days: "35",
+          forecast_days: "16",
           timezone: "America/Argentina/Buenos_Aires",
           wind_speed_unit: "kmh",
         };
@@ -125,6 +125,15 @@ export async function loadEnsemble(
     raw.intervalAligned = true;
     await saveResearchRaw(key, "ensemble", raw);
   }
+  return assessEnsemble(key, lat, lon, r, raw);
+}
+export function assessEnsemble(
+  key: string,
+  lat: number,
+  lon: number,
+  r: Rules,
+  raw: WeatherForecast,
+): EnsembleAssessment {
   return {
     key,
     lat,
@@ -134,7 +143,7 @@ export async function loadEnsemble(
     windows: calculateOperationalWindows(raw, r),
     paths: memberPaths(raw.models, r),
     sources: ENSEMBLE_SOURCES.map((s) => {
-      const models = raw!.models.filter((m) => m.family === s.family);
+      const models = raw.models.filter((m) => m.family === s.family);
       return {
         family: s.family,
         members: models.length,
@@ -148,6 +157,113 @@ export async function loadEnsemble(
       "Datos nativos de 3–6 h interpolados por el proveedor a 1 h; la continuidad subhoraria no está garantizada.",
   };
 }
+export interface EnsemblePoint {
+  key: string;
+  lat: number;
+  lon: number;
+}
+// Fetch coordinates together: every response index remains attached to its
+// requested equipment coordinate, never to a neighboring point or a grid cell.
+export async function fetchEnsembleBatch(
+  points: EnsemblePoint[],
+  request: typeof fetch = fetch,
+) {
+  if (!points.length) return [];
+  const fetchedAt = new Date().toISOString();
+  const results = await Promise.allSettled(
+    ENSEMBLE_SOURCES.map(async (source) => {
+      const url = new URL(
+        process.env.WEATHER_API_KEY
+          ? "https://customer-ensemble-api.open-meteo.com/v1/ensemble"
+          : "https://ensemble-api.open-meteo.com/v1/ensemble",
+      );
+      const params: Record<string, string> = {
+        latitude: points.map((p) => p.lat).join(","),
+        longitude: points.map((p) => p.lon).join(","),
+        models: source.model,
+        hourly: "wind_speed_10m,wind_gusts_10m,precipitation",
+        forecast_days: "16",
+        timezone: "America/Argentina/Buenos_Aires",
+        wind_speed_unit: "kmh",
+      };
+      if (process.env.WEATHER_API_KEY)
+        params.apikey = process.env.WEATHER_API_KEY;
+      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+      const response = await request(url, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(25000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      const rows = Array.isArray(payload) ? payload : [payload];
+      if (rows.length !== points.length)
+        throw new Error("Respuesta con ubicaciones incompletas");
+      return rows.map((row) =>
+        row.hourly?.time ? parseEnsemble(row.hourly, source.family) : [],
+      );
+    }),
+  );
+  return points.map((_, index): WeatherForecast => ({
+    intervalAligned: true,
+    fetchedAt,
+    models: results.flatMap((r) =>
+      r.status === "fulfilled" ? r.value[index] : [],
+    ),
+    errors: results.flatMap((r, i) =>
+      r.status === "rejected"
+        ? [
+            `${ENSEMBLE_SOURCES[i].family}: ${r.reason instanceof Error ? r.reason.message : "descarga fallida"}`,
+          ]
+        : r.value[index].length
+          ? []
+          : [`${ENSEMBLE_SOURCES[i].family}: sin datos para esta ubicación`],
+    ),
+    source: "Open-Meteo Ensemble API",
+  }));
+}
+export async function loadEnsembleBatch(points: EnsemblePoint[], rules: Rules) {
+  const cached = await Promise.all(
+    points.map((p) => readResearchRaw<WeatherForecast>(p.key, "ensemble")),
+  );
+  const missing = points.filter((_, i) => {
+    const raw = cached[i],
+      age = raw ? Date.now() - Date.parse(raw.fetchedAt) : NaN;
+    return (
+      !raw ||
+      !Number.isFinite(age) ||
+      age < 0 ||
+      age > 3 * 3600000 ||
+      !raw.models.length ||
+      (raw.errors.length > 0 && age > 60000)
+    );
+  });
+  const downloaded = await fetchEnsembleBatch(missing);
+  const byKey = new Map(missing.map((p, i) => [p.key, downloaded[i]]));
+  return Promise.all(
+    points.map(async (p, i) => {
+      const raw = byKey.get(p.key) ?? cached[i]!;
+      if (!raw.models.length)
+        return {
+          point: p,
+          error: raw.errors.join(" · ") || "Sin datos meteorológicos",
+        };
+      if (!raw.intervalAligned) {
+        raw.models = raw.models.map((m) => ({
+          ...m,
+          hours: alignHourlyIntervals(m.hours),
+        }));
+        raw.intervalAligned = true;
+      }
+      await saveResearchRaw(p.key, "ensemble", raw);
+      return {
+        point: p,
+        assessment: assessEnsemble(p.key, p.lat, p.lon, rules, raw),
+        error: raw.errors.join(" · "),
+      };
+    }),
+  );
+}
+
 export async function loadHistoricalClimate(
   key: string,
   lat: number,

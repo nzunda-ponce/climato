@@ -124,3 +124,22 @@ model ForecastObservation {
 
   @@index([model, region, validAt])
 }
+
+// Compressed, individually addressable records. Schema initialization and legacy
+// import are performed transactionally by src/persistence at application startup.
+model ClimatoRecord {
+  namespace String
+  key String
+  payload Bytes
+  hash String
+  updatedAt BigInt
+  expiresAt BigInt?
+  location String?
+  validDate String?
+  lead Int?
+  signature String?
+  @@id([namespace, key])
+  @@index([expiresAt], map: "ClimatoRecord_expiry")
+  @@index([namespace, location, lead, validDate], map: "ClimatoRecord_validation")
+  @@index([namespace, updatedAt], map: "ClimatoRecord_cache")
+}

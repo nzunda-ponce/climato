@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         .map((f) => f.fetchedAt)
         .sort()
         .at(-1),
-      storage: process.env.DATABASE_URL ? "PostgreSQL" : "Archivo local",
+      storage: process.env.DATABASE_URL ? "PostgreSQL" : "SQLite local",
     });
   } catch {
     return NextResponse.json(
@@ -142,9 +142,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     if (body.action === "rules") {
       const rules = rulesSchema.parse({ ...defaultRules, ...body.rules });
-      await mutateState((s) => {
-        s.rules = rules;
-      });
+      await mutateState(
+        (s) => {
+          s.rules = rules;
+        },
+        { namespaces: ["settings"] },
+      );
       autoSync.invalidate();
       operationalSync.invalidate();
       void operationalSync.start();
@@ -165,40 +168,43 @@ export async function POST(req: Request) {
           lon: z.number().finite().min(-180).max(180).optional(),
         })
         .parse(body.pivot);
-      await mutateState((s) => {
-        const p = s.pivots.find((p) => p.id === patch.id);
-        if (!p) throw new Error("Equipo inexistente.");
-        if (
-          patch.status === "PROGRAMADO" &&
-          (!patch.scheduledDate || !patch.crew)
-        )
-          throw new Error("Indicá fecha y cuadrilla.");
-        if (patch.crew && patch.crew > s.rules.crews)
-          throw new Error("Cuadrilla no disponible.");
-        if (
-          patch.status === "PROGRAMADO" &&
-          s.pivots.filter(
-            (p) =>
-              p.id !== patch.id &&
-              p.status === "PROGRAMADO" &&
-              p.scheduledDate === patch.scheduledDate &&
-              p.crew === patch.crew,
-          ).length >= s.rules.jobsPerCrew
-        )
-          throw new Error("La cuadrilla alcanzó su capacidad diaria.");
-        if (
-          (patch.lat !== undefined && patch.lat !== p.lat) ||
-          (patch.lon !== undefined && patch.lon !== p.lon)
-        )
-          delete s.forecasts[p.id];
-        const roadChanged =
-          patch.road !== p.road || patch.roadComment !== p.roadComment;
-        Object.assign(
-          p,
-          patch,
-          roadChanged ? { roadUpdatedAt: new Date().toISOString() } : {},
-        );
-      });
+      await mutateState(
+        (s) => {
+          const p = s.pivots.find((p) => p.id === patch.id);
+          if (!p) throw new Error("Equipo inexistente.");
+          if (
+            patch.status === "PROGRAMADO" &&
+            (!patch.scheduledDate || !patch.crew)
+          )
+            throw new Error("Indicá fecha y cuadrilla.");
+          if (patch.crew && patch.crew > s.rules.crews)
+            throw new Error("Cuadrilla no disponible.");
+          if (
+            patch.status === "PROGRAMADO" &&
+            s.pivots.filter(
+              (p) =>
+                p.id !== patch.id &&
+                p.status === "PROGRAMADO" &&
+                p.scheduledDate === patch.scheduledDate &&
+                p.crew === patch.crew,
+            ).length >= s.rules.jobsPerCrew
+          )
+            throw new Error("La cuadrilla alcanzó su capacidad diaria.");
+          if (
+            (patch.lat !== undefined && patch.lat !== p.lat) ||
+            (patch.lon !== undefined && patch.lon !== p.lon)
+          )
+            delete s.forecasts[p.id];
+          const roadChanged =
+            patch.road !== p.road || patch.roadComment !== p.roadComment;
+          Object.assign(
+            p,
+            patch,
+            roadChanged ? { roadUpdatedAt: new Date().toISOString() } : {},
+          );
+        },
+        { namespaces: ["settings", "pivot", "forecast"] },
+      );
     } else throw new Error("Acción no válida.");
     return NextResponse.json({ ok: true });
   } catch (e) {
