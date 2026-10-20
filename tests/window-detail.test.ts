@@ -67,3 +67,34 @@ test("daily and prior-day rainfall determine the window independently of weekly 
     "unconfirmed",
   );
 });
+
+test("hourly proposals expire after twelve hours and reject future timestamps", () => {
+  const f = forecast([...day("2026-10-16"), ...day("2026-10-17")]);
+  assert.equal(
+    hourlyWindowDetail(
+      f,
+      defaultRules,
+      "2026-10-17",
+      new Date("2026-10-16T21:59:00Z"),
+    ).status,
+    "available",
+  );
+  assert.equal(
+    hourlyWindowDetail(
+      f,
+      defaultRules,
+      "2026-10-17",
+      new Date("2026-10-16T22:00:00Z"),
+    ).status,
+    "stale",
+  );
+  assert.equal(
+    hourlyWindowDetail(
+      { ...f, fetchedAt: "2026-10-17T10:00Z" },
+      defaultRules,
+      "2026-10-17",
+      now,
+    ).status,
+    "stale",
+  );
+});

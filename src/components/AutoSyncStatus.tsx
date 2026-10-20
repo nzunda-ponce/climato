@@ -4,8 +4,10 @@ import type { SyncStatus } from "@/providers/sync-runner";
 
 export default function AutoSyncStatus({
   onReload,
+  inline = false,
 }: {
   onReload: () => Promise<void>;
+  inline?: boolean;
 }) {
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [error, setError] = useState("");
@@ -14,6 +16,7 @@ export default function AutoSyncStatus({
     let polling = false;
     let lastStart = 0;
     let lastReload = 0;
+    let wasRunning = false;
     const poll = async () => {
       if (polling) return;
       polling = true;
@@ -33,10 +36,14 @@ export default function AutoSyncStatus({
           setStatus(next);
           setError("");
         }
-        if (Date.now() - lastReload >= 15000 || !next.running) {
+        if (
+          Date.now() - lastReload >= (next.running ? 15000 : 60000) ||
+          (wasRunning && !next.running)
+        ) {
           if (!disposed) await onReload();
           lastReload = Date.now();
         }
+        wasRunning = next.running;
       } catch (e) {
         if (!disposed)
           setError(e instanceof Error ? e.message : "No se pudo cargar");
@@ -53,7 +60,11 @@ export default function AutoSyncStatus({
   }, [onReload]);
   if (!error && status && !status.running && !status.errors.length) return null;
   return (
-    <aside className="auto-sync-status" role="status" aria-live="polite">
+    <aside
+      className={`auto-sync-status${inline ? " inline" : ""}`}
+      role="status"
+      aria-live="polite"
+    >
       <strong>
         {error || status?.message || "Iniciando carga automática…"}
       </strong>

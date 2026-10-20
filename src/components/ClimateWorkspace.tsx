@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import {
   CalendarDays,
   ChevronDown,
@@ -267,6 +268,9 @@ export default function ClimateWorkspace() {
         <a href="/" className="climate-logo">
           climato
         </a>
+        <Link className="climate-report-link" href="/informe">
+          Informe de oportunidades
+        </Link>
         <button disabled={!data} onClick={() => setManagement(true)}>
           <Settings2 size={15} />
           <span>Datos y reglas</span>

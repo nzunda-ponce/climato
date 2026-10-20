@@ -1,4 +1,4 @@
-import { readState, mutateState, saveSnapshot } from "@/persistence/store";
+import { readState, mutateState } from "@/persistence/store";
 import { parsePivots } from "@/domain/import";
 import { syncPivots } from "@/domain/sync-pivots";
 import { cellKey, rulesSignature } from "@/domain/evidence";
@@ -9,8 +9,7 @@ import {
   PUBLIC_WEATHER_BOUNDS,
   publicGridPoints,
 } from "@/domain/seasonal";
-import { loadEnsemble } from "./research";
-import { OpenMeteoProvider } from "./weather";
+import { operationalSync } from "./operational-sync";
 import {
   loadEnso,
   loadGridBatch,
@@ -77,65 +76,14 @@ async function plan(): Promise<SyncTask[]> {
       },
     });
   }
-  const weather = state.pivots.filter(
-    (p) => !locationWarning(p) && !fresh(state.forecasts[p.id]?.fetchedAt, 1),
-  );
-  for (let i = 0; i < weather.length; i += 15) {
-    const batch = weather.slice(i, i + 15);
-    tasks.push({
-      label: `Meteorología de equipos · ${Math.min(i + 15, weather.length)}/${weather.length}`,
-      run: async () => {
-        const results = await new OpenMeteoProvider().forecastMany(batch);
-        for (let j = 0; j < batch.length; j++) {
-          if (results[j]?.models.length)
-            await saveSnapshot(batch[j].id, results[j]);
-        }
-        await mutateState((s) => {
-          batch.forEach((p, j) => {
-            if (
-              results[j]?.models.length &&
-              s.pivots.some(
-                (current) =>
-                  current.id === p.id &&
-                  current.lat === p.lat &&
-                  current.lon === p.lon,
-              )
-            )
-              s.forecasts[p.id] = results[j];
-          });
-        });
-        if (
-          results.length !== batch.length ||
-          results.some((r) => !r.models.length)
-        )
-          throw new Error(
-            "Algunos equipos siguen sin meteorología. Se reintentarán las descargas pendientes.",
-          );
-      },
-    });
-  }
-  // Bring useful short-term windows in first, before the much larger historical download.
-  for (const [key, p] of points) {
-    const cached = state.ensembles?.[key];
-    if (
-      fresh(cached?.fetchedAt, 3) &&
-      cached?.rulesSignature === signature &&
-      cached.sources.some((s) => s.usableMembers > 0) &&
-      !cached.errors.length
-    )
-      continue;
-    tasks.push({
-      label: `Pronóstico de corto plazo · zona ${key}`,
-      run: async () => {
-        const result = await loadEnsemble(key, p.lat, p.lon, state.rules);
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.ensembles ??= {})[key] = result;
-        });
-        if (result.errors.length) throw new Error(result.errors.join(" · "));
-      },
-    });
-  }
+  tasks.push({
+    label: "Actualizando pronóstico de corto plazo",
+    run: async () => {
+      await operationalSync.start();
+      // The status endpoint reads this lane's live errors directly. Copying
+      // them into a long-running historical job would keep resolved errors visible.
+    },
+  });
   const old = await readLongCache<ForecastGrid>("grid");
   const grid: ForecastGrid =
     old && old.start === localDate() && old.end === state.rules.deadline

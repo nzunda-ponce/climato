@@ -18,6 +18,12 @@ Al abrir la aplicación se inicia la carga automática. Si no hay equipos, impor
 
 La primera carga de 45 años de históricos y 527 puntos de malla puede tardar bastante y está sujeta a acceso y límites de los proveedores. Sin conexión o sin acceso al mapa de origen se muestra el motivo y se reintenta; no se generan datos ficticios. En Windows conviene ubicar el proyecto fuera de OneDrive (por ejemplo `C:\Proyectos\climato`); el guardado reintenta bloqueos temporales antes de informar un error.
 
+## Informe de oportunidades
+
+Desde «Informe de oportunidades» en la cabecera del mapa, o en `/informe`, se consultan las próximas fechas por zona, los días aptos esperados a 7 y 14 días y hasta el cierre, los rangos de escenarios y las posibles oportunidades posteriores a una fecha favorable. Incluye horarios por equipo, cobertura, vigencia de fuentes y una explicación breve. Se puede imprimir el informe de la zona seleccionada.
+
+La actualización funciona con el servidor encendido, incluso con la pestaña cerrada. Al reiniciar, retoma las descargas necesarias. La carga inicial de históricos y malla no bloquea la actualización de los pronósticos. Los porcentajes y rangos no son garantías de acierto local; los datos faltantes no se reemplazan por días secos ni por históricos.
+
 ## Uso
 
 - **Mapa:** capa conjunta de lluvia y viento. El color representa lluvia diaria para hoy y lluvia acumulada esperada al elegir una semana: gris en 0, luego azul, verde, amarillo y rojo, con escala no lineal ajustada al período: 0 a 50+ mm para un día y 0 a 350+ mm para siete días. El acumulado esperado no implica lluvia continua. Los trazos siguen la dirección media del viento; su longitud, grosor, visibilidad y velocidad aumentan con la intensidad. WebGL dibuja unas 550 líneas con varios trazos por línea, calculando la geometría al cambiar fecha o posición. Si no está disponible, usa una alternativa SVG menos densa. Puede pausarse y respeta movimiento reducido. La disponibilidad climática se consulta como otra capa. Búsqueda, centrado en equipos y resumen ocultable.
