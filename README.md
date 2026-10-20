@@ -82,6 +82,8 @@ Las pruebas cubren ventanas horarias, lluvia nocturna y previa, datos faltantes,
 
 ## Base gratuita en la nube: Neon PostgreSQL
 
+El proyecto **Climato** ya está creado. Ver [conexión del proyecto existente](docs/neon-setup.md) para activarlo desde la PC que tiene la campaña; no hace falta crear otro proyecto.
+
 Se recomienda [Neon Free](https://neon.com/pricing). El plan gratuito tiene cuotas de almacenamiento, cómputo y transferencia; revisarlas en el panel del proveedor. No hace falta contratar un plan pago para conectar Climato. La base centraliza los datos, pero **no ejecuta el servidor ni las descargas**: Climato debe seguir funcionando en una PC o servidor para actualizar el clima y registrar predicciones todos los días.
 
 Configuración una sola vez, **desde la PC que contiene los datos actuales**, antes de abrir otras instalaciones contra la base nueva:
