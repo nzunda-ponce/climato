@@ -1,5 +1,8 @@
 name: Actualizar informe Climato
 on:
+  push:
+    branches: [codex/automatic-data-import]
+    paths: ['src/domain/**', 'scripts/data-worker.ts']
   workflow_dispatch:
     inputs:
       mode:
@@ -38,8 +41,12 @@ jobs:
       - name: Ejecutar proceso y publicar resultados
         env:
           MANUAL_MODE: ${{ inputs.mode }}
+          RUN_EVENT: ${{ github.event_name }}
         run: |
-          if [ -n "$MANUAL_MODE" ]; then
+          if [ "$RUN_EVENT" = 'push' ]; then
+            # Recompute from Neon after a model change; no weather API calls.
+            job_mode=publish
+          elif [ -n "$MANUAL_MODE" ]; then
             job_mode="$MANUAL_MODE"
           else
             job_mode=refresh

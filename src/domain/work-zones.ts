@@ -1,0 +1,56 @@
+export function equipmentZone(name: string): string | null {
+  return (
+    name
+      .trim()
+      .toUpperCase()
+      .match(/^[A-Z]([A-Z])/)?.[1] ?? null
+  );
+}
+type Equipment = { name: string; field?: string };
+export function equipmentZoneNames(equipment: Equipment[]) {
+  return [
+    ...new Set(
+      equipment
+        .map((e) => equipmentZone(e.name) ?? "?")
+        .map((code) =>
+          code === "?" ? "Sin zona identificable" : `Zona ${code}`,
+        ),
+    ),
+  ].sort();
+}
+// Weather remains keyed by coordinate. Split display memberships only when
+// equipment from different work zones happens to share the same coordinate.
+export function splitWorkZones<
+  T extends {
+    key: string;
+    equipment: Equipment[];
+    regions: string[];
+    fields: string[];
+    pending: number;
+    locationKey?: string;
+  },
+>(z: T) {
+  const names = equipmentZoneNames(z.equipment);
+  if (!names.length) return [{ ...z, locationKey: z.locationKey ?? z.key }];
+  return names.map((name) => {
+    const equipment = z.equipment.filter(
+      (e) =>
+        (equipmentZone(e.name)
+          ? `Zona ${equipmentZone(e.name)}`
+          : "Sin zona identificable") === name,
+    );
+    return {
+      ...z,
+      key: names.length > 1 ? `${z.locationKey ?? z.key}::${name}` : z.key,
+      locationKey: z.locationKey ?? z.key,
+      regions: [name],
+      fields: [
+        ...new Set(
+          equipment.map((e) => e.field).filter((f): f is string => !!f),
+        ),
+      ],
+      equipment,
+      pending: equipment.length,
+    };
+  });
+}

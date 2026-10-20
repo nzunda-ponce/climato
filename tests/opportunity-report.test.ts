@@ -66,7 +66,7 @@ test("a shared zone counts calendar days once and separates expected days from s
   input.pivots.push({ ...input.pivots[0], id: "b", name: "Equipo B" });
   const second = buildOpportunityReport(input, now);
   const zone = second.zones[0];
-  assert.equal(zone.name, "Necochea");
+  assert.equal(zone.name, "Zona Q");
   assert.equal(zone.pending, 2);
   assert.equal(zone.next7.expectedDays, 5.25);
   assert.equal(zone.next14.expectedDays, 10.5);

@@ -6,6 +6,7 @@ import { localDate } from "@/domain/types";
 import { getDatabase, readPlanningSnapshot } from "./store";
 import { makeRecord, unpack } from "./records";
 import { isReportServer } from "@/runtime/role";
+import { splitWorkZones } from "@/domain/work-zones";
 interface Publication {
   report: PlanningReport;
   revision: string | null;
@@ -89,6 +90,7 @@ export async function readPublishedPlanningReport(
     const revision = await tx.get("system", "revision");
     return {
       ...structuredClone(value.report),
+      zones: structuredClone(value.report.zones).flatMap(splitWorkZones),
       publication: {
         at: value.at,
         readOnly: isReportServer(),

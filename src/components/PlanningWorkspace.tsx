@@ -10,6 +10,7 @@ import {
   missingForecastLabel,
 } from "@/domain/planning-summary";
 import AvailabilityOverview from "./AvailabilityOverview";
+import DataScienceView from "./DataScienceView";
 import {
   availabilityRegion,
   availabilityBacking,
@@ -38,16 +39,22 @@ const date = (v: string) =>
 const group = availabilityRegion;
 const selectionKey = "climato-planning-locations-v1";
 
-type View = "resumen" | "zonas" | "detalle" | "validacion" | "datos";
+type View =
+  "resumen" | "zonas" | "detalle" | "validacion" | "datos" | "ciencia";
 const viewLabels: Record<View, string> = {
   resumen: "Resumen",
   zonas: "Zonas",
   detalle: "Detalle por ubicación",
   validacion: "Validación",
   datos: "Datos y criterios",
+  ciencia: "Ciencia de datos",
 };
-export default function PlanningWorkspace() {
-  const [view, setView] = useState<View>("resumen");
+export default function PlanningWorkspace({
+  initialView = "resumen",
+}: {
+  initialView?: View;
+}) {
+  const [view, setView] = useState<View>(initialView);
   useEffect(() => {
     const update = () => {
       const hash = window.location.hash.slice(1),
@@ -57,12 +64,12 @@ export default function PlanningWorkspace() {
             : hash === "verification"
               ? "validacion"
               : hash;
-      setView(Object.hasOwn(viewLabels, alias) ? (alias as View) : "resumen");
+      setView(Object.hasOwn(viewLabels, alias) ? (alias as View) : initialView);
     };
     update();
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
-  }, []);
+  }, [initialView]);
   const navigate = (target: View) => {
     setView(target);
     window.location.hash = target;
@@ -264,7 +271,13 @@ export default function PlanningWorkspace() {
             ([key, label]) => (
               <a
                 key={key}
-                href={`#${key}`}
+                href={
+                  key === "ciencia"
+                    ? "/ciencia-de-datos"
+                    : initialView === "ciencia"
+                      ? `/#${key}`
+                      : `#${key}`
+                }
                 aria-current={view === key ? "page" : undefined}
                 onClick={() => setView(key)}
               >
@@ -436,7 +449,8 @@ export default function PlanningWorkspace() {
                 )}
               </div>
               <p className="planning-selection-scope">
-                {zones.length} ubicaciones incluidas en el análisis. Las
+                La zona se obtiene de la segunda letra del nombre: BE1187 → Zona
+                E. {zones.length} ubicaciones incluidas en el análisis. Las
                 casillas de grupo afectan sólo los resultados visibles cuando
                 buscás.
               </p>
@@ -549,6 +563,9 @@ export default function PlanningWorkspace() {
             </aside>
           )}
           <div className="planning-content">
+            {view === "ciencia" && (
+              <DataScienceView report={report} zones={zones} />
+            )}
             {view === "resumen" && (
               <AvailabilityOverview
                 report={report}

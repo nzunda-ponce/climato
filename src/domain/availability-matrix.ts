@@ -1,12 +1,16 @@
 import type { PlanningZone } from "./planning-report";
+import { equipmentZoneNames } from "./work-zones";
 export const availabilityRegion = (
-  z: Pick<PlanningZone, "regions" | "provinces" | "fields">,
+  z: Pick<PlanningZone, "regions" | "provinces" | "fields"> & {
+    equipment?: { name: string }[];
+  },
 ) =>
-  (
-    z.regions.join(" / ") ||
-    z.provinces.join(" / ") ||
-    z.fields.join(" / ") ||
-    "Sin zona asignada"
+  (z.equipment?.length
+    ? equipmentZoneNames(z.equipment).join(" / ")
+    : z.regions.join(" / ") ||
+      z.provinces.join(" / ") ||
+      z.fields.join(" / ") ||
+      "Sin zona asignada"
   ).replace(/\bOESTE\b/g, "Oeste");
 export interface AvailabilityCell {
   expected: number | null;
@@ -18,12 +22,29 @@ export interface AvailabilityCell {
   complete: boolean;
   sources: Record<string, number>;
 }
+type OutlookLocation = Pick<PlanningZone, "outlook"> & {
+  locationKey?: string;
+  key?: string;
+};
+function uniqueLocations<T extends { locationKey?: string; key?: string }>(
+  zones: T[],
+) {
+  const seen = new Set<string>();
+  return zones.filter((z) => {
+    const key = z.locationKey ?? z.key;
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 // Average per unique equipment coordinate, never multiplied by equipment count.
 // Unknown days are excluded and coverage remains explicit; no zero imputation.
 export function availabilityCell(
-  zones: Pick<PlanningZone, "outlook">[],
+  zones: OutlookLocation[],
   dates: string[],
 ): AvailabilityCell {
+  zones = uniqueLocations(zones);
   const wanted = new Set(dates),
     sources: Record<string, number> = {};
   let sum = 0,
@@ -105,6 +126,7 @@ export function availabilityBacking(cell: AvailabilityCell) {
 }
 // Rank only actual forecast days. Historical frequency cannot announce a date.
 export function bestForecastDay(zones: PlanningZone[], dates: string[]) {
+  zones = uniqueLocations(zones);
   return dates
     .map((date) => {
       const covered = zones.filter((z) =>

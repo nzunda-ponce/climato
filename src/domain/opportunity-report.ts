@@ -18,6 +18,7 @@ import {
   WeatherForecast,
 } from "./types";
 import { hourlyWindowDetail } from "./window-detail";
+import { equipmentZoneNames } from "./work-zones";
 
 export interface ReportState {
   pivots: Pivot[];
@@ -188,11 +189,7 @@ export function buildOpportunityReport(state: ReportState, now = new Date()) {
       )
       .map((p) => p.pivot);
     const fields = [...new Set(equipment.map((p) => p.field).filter(Boolean))];
-    const regions = [
-      ...new Set(
-        equipment.map((p) => p.region).filter((v): v is string => !!v),
-      ),
-    ];
+    const regions = equipmentZoneNames(equipment);
     const provinces = [
       ...new Set(
         equipment.map((p) => p.province).filter((v): v is string => !!v),

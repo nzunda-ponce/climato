@@ -44,6 +44,37 @@ async function main() {
           console.warn(message);
         process.exitCode = 1;
       }
+      // Complete additional historical samples inside the existing twice-daily
+      // invocations, after current forecasts. Never start another cron or page job.
+      if (!operationalSync.status.errors.length) {
+        const budget = Math.max(
+          0,
+          Math.min(
+            6,
+            Number(process.env.CLIMATO_HISTORY_TASKS_PER_REFRESH ?? 6) || 0,
+          ),
+        );
+        if (budget) {
+          const previousBudget = process.env.CLIMATO_JOB_MAX_TASKS;
+          process.env.CLIMATO_JOB_MAX_TASKS = String(budget);
+          try {
+            const { autoSync } = await import("../src/providers/auto-sync");
+            await autoSync.start();
+            console.log(
+              `Históricos complementarios: ${autoSync.status.completed}/${autoSync.status.total} tareas. Avance guardado.`,
+            );
+            if (autoSync.status.errors.length) {
+              for (const message of autoSync.status.errors)
+                console.warn(message);
+              process.exitCode = 1;
+            }
+          } finally {
+            if (previousBudget === undefined)
+              delete process.env.CLIMATO_JOB_MAX_TASKS;
+            else process.env.CLIMATO_JOB_MAX_TASKS = previousBudget;
+          }
+        }
+      }
     }
     if (mode === "bootstrap") {
       const { autoSync } = await import("../src/providers/auto-sync");

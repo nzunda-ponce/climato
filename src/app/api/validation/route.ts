@@ -28,9 +28,9 @@ export async function GET(request: Request) {
         .filter((p) => p.status !== "TERMINADO" && !locationWarning(p))
         .map((p) => cellKey(p.lat, p.lon)),
     );
-    const keys = [...new Set(params.getAll("key"))].filter((k) =>
-      allowed.has(k),
-    );
+    const keys = [
+      ...new Set(params.getAll("key").map((k) => k.split("::")[0])),
+    ].filter((k) => allowed.has(k));
     const archive = await readValidationArchive({
       locations: keys,
       signature: rulesSignature(s.rules),

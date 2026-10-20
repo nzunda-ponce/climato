@@ -1,5 +1,6 @@
 import { HistoricalClimate, rulesSignature } from "./evidence";
 import { Rules } from "./types";
+import { historicalProbability, historicalModel } from "./history-model";
 export const MIN_HISTORY_YEARS = 10;
 const valid = (n: unknown): n is number =>
   typeof n === "number" && Number.isFinite(n) && n >= 0;
@@ -9,15 +10,7 @@ export function historyDay(
   date: string,
 ) {
   if (!history || history.rulesSignature !== rulesSignature(rules)) return null;
-  const values = [...new Set(history.years)]
-    .map((year) => history.days[`${year}${date.slice(4)}`])
-    .filter(valid);
-  if (values.length < MIN_HISTORY_YEARS) return null;
-  return {
-    probability: values.filter((v) => v > 0).length / values.length,
-    slots: values.reduce((s, v) => s + v, 0) / values.length,
-    years: values.length,
-  };
+  return historicalProbability(history, date);
 }
 // Entire historical years are the sampling unit: preserve runs of wet/dry
 // days and never fabricate independent daily samples or joint model members.
@@ -32,7 +25,11 @@ export function historyPeriod(
     !dates.length
   )
     return null;
-  const counts = [...new Set(history.years)]
+  const selectedYears = historicalModel(
+    history,
+    Number(dates[0].slice(0, 4)),
+  ).trainingYears;
+  const counts = selectedYears
     .flatMap((year) => {
       const values = dates.map(
         (date) => history.days[`${year}${date.slice(4)}`],
@@ -42,7 +39,7 @@ export function historyPeriod(
     .sort((a, b) => a - b);
   if (
     counts.length < MIN_HISTORY_YEARS ||
-    counts.length / history.years.length < 0.8
+    counts.length / selectedYears.length < 0.8
   )
     return null;
   const q = (p: number) =>
