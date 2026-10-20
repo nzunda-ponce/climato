@@ -105,6 +105,53 @@ test("readers keep the last complete publication, detect pending edits and flag 
       (await readPublishedPlanningReport())!.zones[0].equipment[0].name,
       "Editado",
     );
+    const publicationDb = await getDatabase();
+    const originalTransaction = publicationDb.transaction.bind(publicationDb);
+    // An importer writes after the consistent read but before publication.
+    publicationDb.transaction = async (fn) => {
+      publicationDb.transaction = originalTransaction;
+      await mutateState(
+        (s) => {
+          s.pivots[0].name = "Importación concurrente";
+        },
+        { namespaces: ["pivot"] },
+      );
+      return originalTransaction(fn);
+    };
+    try {
+      assert.equal(await publishPlanningReport(true), true);
+    } finally {
+      publicationDb.transaction = originalTransaction;
+    }
+    const concurrent = await readPublishedPlanningReport();
+    assert.equal(concurrent!.zones[0].equipment[0].name, "Editado");
+    assert.equal(concurrent!.publication!.pendingChanges, true);
+    await publishPlanningReport(true);
+    assert.equal(
+      (await readPublishedPlanningReport())!.publication!.pendingChanges,
+      false,
+    );
+    // A faster publisher must not be overwritten by an older snapshot.
+    publicationDb.transaction = async (fn) => {
+      publicationDb.transaction = originalTransaction;
+      await mutateState(
+        (s) => {
+          s.pivots[0].name = "Publicación más reciente";
+        },
+        { namespaces: ["pivot"] },
+      );
+      await publishPlanningReport(true);
+      return originalTransaction(fn);
+    };
+    try {
+      assert.equal(await publishPlanningReport(true), true);
+    } finally {
+      publicationDb.transaction = originalTransaction;
+    }
+    assert.equal(
+      (await readPublishedPlanningReport())!.zones[0].equipment[0].name,
+      "Publicación más reciente",
+    );
     assert.equal(
       (await readPublishedPlanningReport(new Date(Date.now() + 4 * 3600000)))!
         .publication!.stale,

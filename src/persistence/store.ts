@@ -99,20 +99,17 @@ export interface ReadOptions {
   namespaces?: string[];
 }
 export async function readState(options: ReadOptions = {}): Promise<State> {
+  if (
+    options.purpose === "planning" &&
+    !options.validation &&
+    !options.namespaces
+  )
+    return (await readPlanningSnapshot()).state;
   const db = await getDatabase();
   const namespaces =
     options.namespaces ??
     (options.purpose === "planning" ? planningNamespaces : stateNamespaces);
   return db.read(async (tx) => {
-    const cached =
-      options.purpose === "planning" &&
-      !options.validation &&
-      !options.namespaces;
-    const stamp = cached
-      ? (await tx.get("system", "revision"))?.hash
-      : undefined;
-    if (stamp && globalStore.climatoPlanningCache?.revision === stamp)
-      return structuredClone(globalStore.climatoPlanningCache.state);
     const state = decodeState(
       await tx.list({
         namespaces: [
@@ -121,12 +118,31 @@ export async function readState(options: ReadOptions = {}): Promise<State> {
         ],
       }),
     );
-    if (cached && stamp)
-      globalStore.climatoPlanningCache = {
-        revision: stamp,
-        state: structuredClone(state),
-      };
     return state;
+  });
+}
+// Data and its revision must come from the same database snapshot.
+export async function readPlanningSnapshot() {
+  const db = await getDatabase();
+  return db.read(async (tx) => {
+    const revision = await tx.get("system", "revision");
+    const cached = globalStore.climatoPlanningCache;
+    let state: State;
+    if (revision && cached?.revision === revision.hash)
+      state = structuredClone(cached.state);
+    else {
+      state = decodeState(await tx.list({ namespaces: planningNamespaces }));
+      if (revision)
+        globalStore.climatoPlanningCache = {
+          revision: revision.hash,
+          state: structuredClone(state),
+        };
+    }
+    return {
+      state,
+      revision: revision?.hash ?? null,
+      sourceUpdatedAt: revision?.updatedAt ?? 0,
+    };
   });
 }
 async function revision(tx: DatabaseTransaction) {

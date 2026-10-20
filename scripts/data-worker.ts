@@ -35,8 +35,15 @@ async function main() {
       if (
         operationalSync.status.errors.length ||
         verificationSync.status.errors.length
-      )
+      ) {
+        // Runner errors are already redacted for public job status.
+        for (const message of new Set([
+          ...operationalSync.status.errors,
+          ...verificationSync.status.errors,
+        ]))
+          console.warn(message);
         process.exitCode = 1;
+      }
     }
     if (mode === "bootstrap") {
       const { autoSync } = await import("../src/providers/auto-sync");

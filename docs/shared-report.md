@@ -12,7 +12,7 @@ Los tres comandos usan la misma `DATABASE_URL` de Neon y rechazan una conexión 
 
 Si Open-Meteo responde HTTP 429, se detiene la pasada y se guarda una pausa compartida de al menos una hora. Las otras tareas también respetan esa pausa, sin extenderla cada vez que consultan el estado. No se cambian IPs ni se crean datos para sortear el límite del proveedor. La próxima ejecución intentará únicamente los pendientes.
 
-La publicación es atómica y comprueba la revisión de origen. Si un proceso falla, permanece la última publicación completa. Se muestra una advertencia cuando cambian los datos sin publicar, pasa el día, transcurren tres horas o vence una fuente meteorológica utilizada. Una publicación puede tener cobertura parcial: el informe muestra esa cobertura y no la convierte en una campaña completa.
+La publicación es atómica y usa los datos y la revisión de una misma lectura consistente. Las importaciones pueden seguir avanzando mientras se prepara el informe: eso se indica como cambios pendientes y no impide publicar el avance disponible. Un proceso lento no reemplaza una publicación que ya utiliza datos más recientes. Si un proceso falla, permanece la última publicación completa. Se muestra una advertencia cuando cambian los datos sin publicar, pasa el día, transcurren tres horas o vence una fuente meteorológica utilizada. Una publicación puede tener cobertura parcial: el informe muestra esa cobertura y no la convierte en una campaña completa.
 
 ## Activar la tarea programada en GitHub Actions
 
