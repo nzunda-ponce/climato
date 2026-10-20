@@ -4,6 +4,8 @@ Informe de planificación de uniformidades en campo: zonas seleccionables, anál
 
 ## Ejecutar
 
+**Para retomar desde otra PC:** seguir [la guía de instalación y conexión a los datos existentes](docs/otra-pc.md). El informe ya está publicado en https://climato-eta.vercel.app/ y no requiere instalación para consultarlo.
+
 Node.js 24 o superior:
 
 ```sh
@@ -16,7 +18,7 @@ Abrir <http://127.0.0.1:3000>. En Windows también se puede iniciar con doble cl
 
 `npm run dev` revisa cada 15 segundos la rama de GitHub configurada y actualiza código, dependencias y servidor. También recarga la página. Para activar esto en una instalación anterior hay que actualizar una vez y reiniciar con `npm run dev`. Con cambios locales o ramas divergentes, la actualización se pausa sin sobrescribirlos. `npm run dev:manual` permite desarrollar sin sincronización remota.
 
-En la instalación local existente, el servidor debe seguir encendido para descargar datos y archivar estimaciones, aunque nadie esté mirando la página. Una vez activados el trabajador y la web remotos, esa función deja de depender de la PC. Si se apaga, no se inventan pronósticos para las fechas perdidas. La herramienta se puede consultar ocasionalmente; una instalación local apagada no puede construir una validación diaria continua.
+La instalación compartida ya usa Vercel para la web, Neon para los datos y GitHub Actions para las actualizaciones. No depende de que la PC esté encendida. Para consultar esos mismos datos localmente, configurar `DATABASE_URL` y `CLIMATO_ROLE=web` según la guía anterior.
 
 ## Nueva pantalla de planificación
 
@@ -73,7 +75,7 @@ La validación del **entrenamiento de análogos** se presenta aparte: entrenamie
 
 La web de consulta (`CLIMATO_ROLE=web`, automático en Vercel) lee resultados publicados en Neon y no inicia descargas ni cálculos de disponibilidad por visita. Los procesos independientes `data:bootstrap`, `data:refresh` y `data:publish` preparan los históricos, mantienen el pronóstico y publican el informe. Se conservan el avance y la última publicación completa; las fuentes vencidas se identifican explícitamente.
 
-Se incluye un workflow de GitHub Actions para la actualización programada. **Requiere activación en la rama predeterminada y configurar los secretos; no está activo sólo por subir esta rama.** El alojamiento de la web también requiere conectar su cuenta. Ver [activación del informe compartido](docs/shared-report.md).
+El workflow de GitHub Actions y sus secretos ya están configurados para este proyecto: actualiza los datos a las 07:17 y 19:17 de Argentina. Ver [operación del informe compartido](docs/shared-report.md).
 
 ## Datos y actualización
 
@@ -94,11 +96,11 @@ Las pruebas cubren ventanas horarias, lluvia nocturna y previa, datos faltantes,
 
 ## Base gratuita en la nube: Neon PostgreSQL
 
-El proyecto **Climato** ya está creado. Ver [conexión del proyecto existente](docs/neon-setup.md) para activarlo desde la PC que tiene la campaña; no hace falta crear otro proyecto.
+El proyecto **Climato** ya está creado y contiene la campaña migrada. Ver [conexión del proyecto existente](docs/neon-setup.md); no hace falta crear otro proyecto ni volver a importar los equipos.
 
-Se recomienda [Neon Free](https://neon.com/pricing). El plan gratuito tiene cuotas de almacenamiento, cómputo y transferencia; revisarlas en el panel del proveedor. No hace falta contratar un plan pago para conectar Climato. La base centraliza los datos, pero **no ejecuta el servidor ni las descargas**: Climato debe seguir funcionando en una PC o servidor para actualizar el clima y registrar predicciones todos los días.
+Se usa [Neon Free](https://neon.com/pricing), con cuotas de almacenamiento, cómputo y transferencia que se consultan en el panel del proveedor. La base centraliza los datos; las descargas las ejecuta GitHub Actions y la web está en Vercel.
 
-Configuración una sola vez, **desde la PC que contiene los datos actuales**, antes de abrir otras instalaciones contra la base nueva:
+El siguiente procedimiento es sólo para migrar una instalación independiente a una **base nueva y vacía**. No corresponde repetirlo al abrir la campaña existente desde otra PC:
 
 1. Crear un proyecto vacío con el plan Free en Neon y copiar su cadena PostgreSQL con **Connection pooling** y `sslmode=require`.
 2. En la carpeta del proyecto ejecutar `npm run db:generate` y `npm run db:setup`.
