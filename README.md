@@ -20,7 +20,13 @@ El servidor debe seguir encendido para descargar datos y archivar estimaciones, 
 
 ## Nueva pantalla de planificación
 
-La página principal y `/informe` ofrecen el mismo informe:
+La página principal y `/informe` abren un resumen minimalista: Windy a la izquierda, días esperados a la derecha y una matriz de calor debajo. El selector **Días / Semanas** muestra probabilidades diarias para los próximos 14 días o días esperados semanales hasta el cierre de campaña. Cada fila agrupa una zona de trabajo y promedia sus coordenadas seleccionadas, con igual peso por ubicación; no multiplica la disponibilidad por cantidad de equipos.
+
+Los colores expresan disponibilidad media por día cubierto; los valores semanales suman probabilidades por ubicación. Las celdas sin información se distinguen de 0%, las parciales llevan trama y al seleccionarlas se muestran fuentes y cobertura. No se publica un intervalo regional que suponga independencia entre ubicaciones. Los totales parciales no extrapolan faltantes y la fecha de mayor disponibilidad sólo compara días con cobertura completa de la selección.
+
+Los apartados **Zonas**, **Detalle por ubicación**, **Validación** y **Datos y criterios** conservan las herramientas del informe sin mostrarlas todas en el inicio. La selección se comparte entre apartados y persiste al recargar; la validación se consulta cuando se abre su apartado.
+
+El informe incluye:
 
 - **Zonas de trabajo:** seleccionar o deseleccionar regiones completas y ubicaciones individuales. Incluye búsqueda y acciones de seleccionar/quitar todas. La selección persiste en el navegador y limita tablas, resumen y matriz de confusión.
 - **Windy:** mapa interactivo oficial insertado mediante [Windy Embed](https://embed.windy.com/config/map), con capas de viento y lluvia y enlace a la web completa. Se centra en la ubicación consultada. Su fecha y su modelo se controlan dentro de Windy; el contenido del iframe no alimenta los cálculos ni está sincronizado con la fecha de la tabla. Se conservan sus controles y atribución.

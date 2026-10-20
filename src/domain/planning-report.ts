@@ -95,6 +95,7 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
           historyYears:
             history?.rulesSignature === signature ? history.years.length : 0,
         },
+        outlook,
         weekly,
         remaining: summarize(report.start, report.deadline),
         next7: {
