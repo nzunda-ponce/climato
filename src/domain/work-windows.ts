@@ -169,7 +169,7 @@ export function workDayLabel(probability: number | null, tentative = false) {
   if (probability === null) return "Faltan datos";
   if (tentative) return "Volver a revisar más cerca";
   return probability >= 0.7
-    ? "Buen día para evaluar"
+    ? "Posible ventana; confirmar horario"
     : probability >= 0.4
       ? "Puede servir; falta confirmar"
       : "Pocas chances por ahora";

@@ -114,20 +114,7 @@ export default function ClimateWorkspace() {
     return result;
   }, [data, granularity]);
   const range = periods.find((p) => p.key === period) ?? periods[0];
-  const rawMapPeriod =
-    data && range
-      ? weatherMapPeriod(data.today, range.start, period === "campaign")
-      : null;
-  const mapPeriod =
-    rawMapPeriod && data
-      ? {
-          ...rawMapPeriod,
-          end:
-            rawMapPeriod.end > data.climatic.end
-              ? data.climatic.end
-              : rawMapPeriod.end,
-        }
-      : null;
+  const mapPeriod = range ? weatherMapPeriod(range.start, range.end) : null;
   const changeGranularity = (next: "day" | "week") => {
     setGranularity(next);
     if (!data) return;
@@ -311,8 +298,10 @@ export default function ClimateWorkspace() {
           {layer === "rain" ? "Lluvia + viento" : "Días aptos por zona"}
           <span>
             {layer === "rain" && mapPeriod
-              ? mapPeriod.start === data?.today
-                ? "Hoy"
+              ? mapPeriod.start === mapPeriod.end
+                ? mapPeriod.start === data?.today
+                  ? "Hoy"
+                  : label(mapPeriod.start)
                 : `${label(mapPeriod.start)} — ${label(mapPeriod.end)}`
               : range
                 ? `${label(range.start)} — ${label(range.end)}`
@@ -548,8 +537,8 @@ export default function ClimateWorkspace() {
           <div className={`windy-legend ${layer}`}>
             <span>
               {layer === "rain"
-                ? mapPeriod?.start === data?.today
-                  ? "Lluvia de hoy · mm"
+                ? mapPeriod?.start === mapPeriod?.end
+                  ? "Lluvia total del día · mm"
                   : "Lluvia acumulada esperada · mm"
                 : "Días estimados para trabajar"}
             </span>
@@ -584,9 +573,11 @@ export default function ClimateWorkspace() {
                 </span>
               ))}
             </footer>
-            {layer === "rain" && mapPeriod?.start !== data?.today && (
+            {layer === "rain" && (
               <p className="windy-rain-explanation">
-                Total del período, no lluvia continua.
+                {mapPeriod?.start === mapPeriod?.end
+                  ? "Total del día, incluida la noche. Puede haber horas secas para ensayar."
+                  : "Total del período. No significa lluvia todos los días ni a toda hora."}
               </p>
             )}
           </div>
@@ -737,9 +728,11 @@ export default function ClimateWorkspace() {
               horas secas. Confirmá los horarios antes de salir.
             </p>
             <p>
-              El mapa muestra la lluvia y el viento de hoy. Al elegir otra
-              semana, muestra la lluvia acumulada esperada de esa semana. El
-              acumulado no significa que llueva continuamente.
+              El mapa muestra la lluvia total del día o del período que
+              elegiste, incluida la noche. Los colores no indican que llueva
+              continuamente. Las ventanas de trabajo buscan horas seguidas sin
+              lluvia durante el ensayo. Sin elegir una zona, el calendario
+              muestra un promedio que puede ocultar diferencias entre lugares.
             </p>
             <button
               className="windy-text-button"

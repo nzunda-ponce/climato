@@ -84,21 +84,23 @@ test("missing working-hour or prior-day rainfall is unknown; missing night hours
     rulesSignature({ ...defaultRules, rain24Limit: 10 }),
   );
 });
-test("current-week selections keep today's map; next week switches on Monday", () => {
+test("weather map matches the selected day, week and campaign exactly", () => {
   assert.equal(nextMonday("2026-10-16"), "2026-10-19");
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-10-18"), {
-    start: "2026-10-16",
-    end: "2026-10-16",
-  });
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-10-21"), {
-    start: "2026-10-19",
-    end: "2026-10-25",
-  });
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-12-01", true), {
-    start: "2026-10-16",
-    end: "2026-10-16",
-  });
   assert.equal(nextMonday("2026-10-19"), "2026-10-26");
+  for (const selected of ["2026-10-21", "2026-10-26", "2026-10-28"]) {
+    assert.deepEqual(weatherMapPeriod(selected), {
+      start: selected,
+      end: selected,
+    });
+  }
+  assert.deepEqual(weatherMapPeriod("2026-10-26", "2026-11-01"), {
+    start: "2026-10-26",
+    end: "2026-11-01",
+  });
+  assert.deepEqual(weatherMapPeriod("2026-10-21", "2026-12-31"), {
+    start: "2026-10-21",
+    end: "2026-12-31",
+  });
 });
 
 test("a rainy hour splits trials without discarding the dry parts of the day", () => {

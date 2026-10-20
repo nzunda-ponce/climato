@@ -35,7 +35,7 @@ La actualización funciona con el servidor encendido, incluso con la pestaña ce
 ## Uso
 
 - **Mapa:** capa conjunta de lluvia y viento. El color representa lluvia diaria para hoy y lluvia acumulada esperada al elegir una semana: gris en 0, luego azul, verde, amarillo y rojo, con escala no lineal ajustada al período: 0 a 50+ mm para un día y 0 a 350+ mm para siete días. El acumulado esperado no implica lluvia continua. Los trazos siguen la dirección media del viento; su longitud, grosor, visibilidad y velocidad aumentan con la intensidad. WebGL dibuja unas 550 líneas con varios trazos por línea, calculando la geometría al cambiar fecha o posición. Si no está disponible, usa una alternativa SVG menos densa. Puede pausarse y respeta movimiento reducido. La disponibilidad climática se consulta como otra capa. Búsqueda, centrado en equipos y resumen ocultable.
-- **Línea de tiempo:** cada semana muestra una cantidad aproximada de días para trabajar, en lugar de un porcentaje diario. Al elegir una zona, el cálculo usa esa zona; sin selección, muestra el promedio entre zonas, sin multiplicarlo por equipos. La vista diaria usa indicaciones como «Buen día para evaluar», «Puede servir» o «Faltan datos». Los horarios se consultan en «Ver días y horarios»; los porcentajes quedan como detalle opcional.
+- **Línea de tiempo:** cada semana muestra una cantidad aproximada de días para trabajar, en lugar de un porcentaje diario. Al elegir una zona, el cálculo usa esa zona; sin selección, muestra el promedio entre zonas, sin multiplicarlo por equipos. La vista diaria usa indicaciones como «Posible ventana; confirmar horario», «Puede servir» o «Faltan datos». Los horarios se consultan en «Ver días y horarios»; los porcentajes quedan como detalle opcional.
 - **Cómo calculamos los días aptos:** explicación con ejemplos de porcentajes, ventanas y fechas lejanas. El detalle técnico de la comprobación está desplegable en Fuentes.
 - **Detalle de equipo:** nombre, campo, ventanas estimadas, probabilidad de la mejor ventana y las próximas tres oportunidades. Las referencias históricas y los datos técnicos quedan en Fuentes.
 - **Datos y reglas → Fuentes:** cobertura de cada fuente y zona, actualización y limitaciones del modelo.
@@ -88,3 +88,5 @@ npm run db:push
 Configurar `DATABASE_URL` en `.env` y aplicar `prisma/postgis.sql`. El agregado operativo se almacena como `AppState`; la caché meteorológica permanece local. No hay migración automática de los datos locales existentes: exportar un respaldo antes de cambiar de modo.
 
 Ver [fuentes y previsibilidad](docs/predictability.md) para las limitaciones técnicas y los datos pendientes de calibración.
+
+El mapa de lluvia respeta exactamente el día o período seleccionado. Muestra el acumulado, incluida la noche; los días aptos buscan horas secas durante el ensayo y pueden coexistir con lluvia fuera de ese horario. Sin seleccionar una zona, el calendario resume el promedio entre zonas.
