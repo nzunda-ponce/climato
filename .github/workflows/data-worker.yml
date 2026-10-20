@@ -11,7 +11,7 @@ on:
         options: [refresh, bootstrap, publish]
         default: refresh
   schedule:
-    # Argentina (UTC-3): 07:17 and 19:17. Historical imports are manual.
+    # Argentina (UTC-3): 07:17 and 19:17; refresh resumes small history batches.
     - cron: '17 10,22 * * *'
 permissions:
   contents: read
