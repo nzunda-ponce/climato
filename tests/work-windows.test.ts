@@ -144,3 +144,37 @@ test("low probability is preserved and adding equipment cannot inflate the per-e
     null,
   );
 });
+
+test("weekly display counts days per zone, distinguishes unknown from zero, and does not use equipment counts", async () => {
+  const { workDaySummary, estimatedDaysText, workDayLabel } =
+    await import("../src/domain/work-windows");
+  const days = Array.from({ length: 7 }, (_, i) =>
+    day(`2026-11-0${i + 1}`, 0.23, 0.46),
+  );
+  const one = zone(1, days),
+    many = zone(145, days);
+  assert.ok(
+    Math.abs(
+      workDaySummary([one, many], "2026-11-01", "2026-11-07").expectedDays! -
+        1.61,
+    ) < 1e-9,
+  );
+  assert.equal(estimatedDaysText(1.61), "2");
+  assert.equal(
+    workDaySummary(
+      [{ ...one, days: days.slice(0, 6) }],
+      "2026-11-01",
+      "2026-11-07",
+    ).expectedDays,
+    null,
+  );
+  assert.equal(
+    workDaySummary(
+      [zone(1, [day("2026-11-01", 0, 0)])],
+      "2026-11-01",
+      "2026-11-01",
+    ).expectedDays,
+    0,
+  );
+  assert.equal(workDayLabel(0.9, true), "Volver a revisar más cerca");
+});

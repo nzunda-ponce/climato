@@ -30,7 +30,7 @@ export function hourlyWindowDetail(
         "Fecha tentativa: el pronóstico aún no permite precisar un horario.",
     };
   const age = now.getTime() - Date.parse(forecast.fetchedAt);
-  if (!Number.isFinite(age) || age < 0 || age >= 36 * 3600000)
+  if (!Number.isFinite(age) || age < 0 || age >= 12 * 3600000)
     return {
       status: "stale",
       window: null,

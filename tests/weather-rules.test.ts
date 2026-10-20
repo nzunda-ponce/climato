@@ -17,7 +17,7 @@ const day = (date: string, rain = 0, wind = 16): Hour[] =>
     gust: null,
     soil: null,
   }));
-test("wind up to 16 is allowed; rain at any hour or 15 mm the day before vetoes work", () => {
+test("wind up to 16 is allowed; night rain does not veto a dry trial, previous rain still limits access", () => {
   const current = day("2026-10-17"),
     previous = day("2026-10-16", 14.9);
   assert.equal(dailyCapacity(current, defaultRules, previous), 3);
@@ -27,16 +27,24 @@ test("wind up to 16 is allowed; rain at any hour or 15 mm the day before vetoes 
   );
   assert.equal(
     dailyCapacity(day("2026-10-17", 0.1), defaultRules, previous),
-    0,
+    3,
   );
   assert.equal(dailyCapacity(current, defaultRules, day("2026-10-16", 15)), 0);
   assert.equal(dailyCapacity(current, defaultRules, day("2026-10-16", 25)), 0);
 });
-test("missing full-day or prior-day rainfall is unknown, never dry", () => {
+test("missing working-hour or prior-day rainfall is unknown; missing night hours do not veto a trial", () => {
   assert.equal(dailyCapacity(day("2026-10-17"), defaultRules), null);
   assert.equal(
     dailyCapacity(
       day("2026-10-17").slice(0, 23),
+      defaultRules,
+      day("2026-10-16"),
+    ),
+    3,
+  );
+  assert.equal(
+    dailyCapacity(
+      day("2026-10-17").filter((h) => h.time.slice(11, 13) !== "12"),
       defaultRules,
       day("2026-10-16"),
     ),
@@ -76,19 +84,69 @@ test("missing full-day or prior-day rainfall is unknown, never dry", () => {
     rulesSignature({ ...defaultRules, rain24Limit: 10 }),
   );
 });
-test("current-week selections keep today's map; next week switches on Monday", () => {
+test("weather map matches the selected day, week and campaign exactly", () => {
   assert.equal(nextMonday("2026-10-16"), "2026-10-19");
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-10-18"), {
-    start: "2026-10-16",
-    end: "2026-10-16",
-  });
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-10-21"), {
-    start: "2026-10-19",
-    end: "2026-10-25",
-  });
-  assert.deepEqual(weatherMapPeriod("2026-10-16", "2026-12-01", true), {
-    start: "2026-10-16",
-    end: "2026-10-16",
-  });
   assert.equal(nextMonday("2026-10-19"), "2026-10-26");
+  for (const selected of ["2026-10-21", "2026-10-26", "2026-10-28"]) {
+    assert.deepEqual(weatherMapPeriod(selected), {
+      start: selected,
+      end: selected,
+    });
+  }
+  assert.deepEqual(weatherMapPeriod("2026-10-26", "2026-11-01"), {
+    start: "2026-10-26",
+    end: "2026-11-01",
+  });
+  assert.deepEqual(weatherMapPeriod("2026-10-21", "2026-12-31"), {
+    start: "2026-10-21",
+    end: "2026-12-31",
+  });
+});
+
+test("a rainy hour splits trials without discarding the dry parts of the day", () => {
+  const current = day("2026-10-17").map((h) => ({
+    ...h,
+    rain: h.time.slice(11, 13) === "12" ? 3 : 0,
+  }));
+  const previous = day("2026-10-16");
+  assert.equal(dailyCapacity(current, defaultRules, previous), 2);
+  const f = {
+    fetchedAt: "2026-10-16T12:00Z",
+    source: "test",
+    errors: [],
+    models: [{ model: "test", hours: [...previous, ...current] }],
+  };
+  const windows = calculateOperationalWindows(
+    f,
+    defaultRules,
+    new Date("2026-10-16T12:00Z"),
+  );
+  assert.equal(windows[0].start, "2026-10-17T13:00");
+  assert.equal(windows[0].end, "2026-10-17T19:00");
+  assert.equal(windows[0].probability, 100);
+});
+
+test("continuous rain still vetoes work and the rainfall limit applies to the whole trial", () => {
+  const previous = day("2026-10-16");
+  const current = day("2026-10-17").map((h) => ({ ...h, rain: 0.4 }));
+  assert.equal(dailyCapacity(current, defaultRules, previous), 0);
+  assert.equal(
+    dailyCapacity(current, { ...defaultRules, rain: 1 }, previous),
+    0,
+  );
+  const light = current.map((h) => ({ ...h, rain: 0.2 }));
+  assert.equal(dailyCapacity(light, { ...defaultRules, rain: 1 }, previous), 3);
+  const f = {
+    fetchedAt: "2026-10-16T12:00Z",
+    source: "test",
+    errors: [],
+    models: [{ model: "test", hours: [...previous, ...light] }],
+  };
+  const w = calculateOperationalWindows(
+    f,
+    { ...defaultRules, rain: 1 },
+    new Date("2026-10-16T12:00Z"),
+  )[0];
+  assert.equal(w.hours, 5);
+  assert.ok(Math.abs(w.rain - 1) < 1e-9);
 });

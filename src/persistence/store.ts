@@ -8,6 +8,7 @@ import {
   Observation,
 } from "@/domain/evidence";
 import { gzipSync, gunzipSync } from "node:zlib";
+import { replaceFile } from "./replace-file";
 import type { SeasonalAssessment } from "@/domain/seasonal";
 interface State {
   pivots: Pivot[];
@@ -117,7 +118,7 @@ export async function mutateState(
         await fs.mkdir(dir, { recursive: true });
         const temp = statePath + `.${process.pid}.tmp`;
         await fs.writeFile(temp, JSON.stringify(state, null, 2));
-        await fs.rename(temp, statePath);
+        await replaceFile(temp, statePath);
       }
     } finally {
       await lock.close();

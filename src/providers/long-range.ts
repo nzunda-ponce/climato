@@ -1,6 +1,8 @@
 import { promises as fs } from "node:fs";
 import { gzipSync, gunzipSync } from "node:zlib";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { replaceFile } from "@/persistence/replace-file";
 import { addDays, Hour, localDate, Rules } from "@/domain/types";
 import { dailyRainTotal } from "@/domain/weather-rules";
 import {
@@ -35,24 +37,9 @@ export async function writeLongCache(name: string, value: unknown) {
   if (!/^[\w.,-]+$/.test(name)) throw new Error("Nombre de caché inválido");
   await fs.mkdir(root, { recursive: true });
   const target = path.join(root, name + ".json.gz"),
-    temp = target + `.${process.pid}.tmp`;
+    temp = target + `.${process.pid}.${randomUUID()}.tmp`;
   await fs.writeFile(temp, gzipSync(JSON.stringify(value)));
-  // OneDrive can briefly lock an existing cache during synchronization.
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await fs.rename(temp, target);
-      break;
-    } catch (error) {
-      if (
-        !["EPERM", "EBUSY", "EACCES"].includes(
-          (error as NodeJS.ErrnoException).code ?? "",
-        ) ||
-        attempt >= 5
-      )
-        throw error;
-      await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
-    }
-  }
+  await replaceFile(temp, target);
 }
 export async function fetchJson(url: URL) {
   for (let i = 0; i < 4; i++) {
@@ -325,7 +312,7 @@ export async function loadSeasonal(
         rain = (rains as number[]).reduce((s, v) => s + v, 0),
         previousRain = (before as number[]).reduce((s, v) => s + v, 0),
         prediction =
-          rain > r.rain || previousRain >= r.rain24Limit
+          previousRain >= r.rain24Limit
             ? { probability: 0, slots: 0 }
             : model?.(date.slice(5, 7), wind, rain, previousRain);
       if (prediction) samples.push({ ...prediction, wind, rain });
@@ -361,7 +348,7 @@ export async function loadSeasonal(
     days,
     years: history?.years ?? [],
     method:
-      "Ensemble dinámico EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; viento y lluvia del pronóstico, ventanas horarias históricas de viento y lluvia. Experimental, sin calibración contra hindcasts SEAS5.",
+      "EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; horas continuas con viento apto y lluvia limitada al ensayo, más lluvia del día anterior. La lluvia diaria pronosticada informa los análogos y no descarta por sí sola el día. Experimental, sin calibración contra hindcasts.",
     errors: model
       ? []
       : ["Faltan al menos 30 años de datos compatibles para estimar ventanas."],

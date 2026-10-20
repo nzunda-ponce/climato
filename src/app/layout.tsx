@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import "./console.css";
+import DevAutoReload from "@/components/DevAutoReload";
 export const metadata: Metadata = {
   title: "Climato · Viabilidad climática",
   description:
@@ -14,7 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <DevAutoReload />
+        {children}
+      </body>
     </html>
   );
 }

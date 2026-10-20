@@ -5,15 +5,7 @@ export function nextMonday(today: string) {
   return addDays(today, weekday === 0 ? 1 : 8 - weekday);
 }
 
-// Current-week selections keep today's heatmap; later weeks use their own forecast.
-export function weatherMapPeriod(
-  today: string,
-  selected: string,
-  campaign = false,
-) {
-  if (campaign || selected < nextMonday(today))
-    return { start: today, end: today };
-  const weekday = new Date(selected + "T12:00Z").getUTCDay();
-  const start = addDays(selected, -(weekday === 0 ? 6 : weekday - 1));
-  return { start, end: addDays(start, 6) };
+// Use exactly the range selected in the timeline, including individual days.
+export function weatherMapPeriod(start: string, end = start) {
+  return { start, end };
 }

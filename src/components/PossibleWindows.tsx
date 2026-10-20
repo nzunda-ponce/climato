@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, Search } from "lucide-react";
 import { PossibleWindow } from "@/domain/work-windows";
+import { workDayLabel } from "@/domain/work-windows";
+import { addDays, localDate } from "@/domain/types";
 import type { WindowDetail } from "@/domain/window-detail";
 
 const dateLabel = (date: string) =>
@@ -93,16 +95,15 @@ export default function PossibleWindows({
         >
           <X size={18} />
         </button>
-        <h2 id="possible-windows-title">Ventanas posibles</h2>
+        <h2 id="possible-windows-title">Días y horarios para trabajar</h2>
         <p>
           {dateLabel(start)}
           {start !== end ? ` — ${dateLabel(end)}` : ""} · bloques de al menos{" "}
           {minHours} h
         </p>
         <p>
-          Las ventanas son un promedio entre escenarios, por eso pueden tener
-          decimales. Cada fila es una fecha para evaluar. El porcentaje indica
-          qué tan probable es; no se ocultan las de menor probabilidad.
+          Cada fila es un día para revisar. Consultá el horario del equipo antes
+          de organizar una salida. Las fechas lejanas todavía pueden cambiar.
         </p>
         <label className="possible-windows-search">
           <Search size={16} />
@@ -122,8 +123,7 @@ export default function PossibleWindows({
               <tr>
                 <th>Fecha</th>
                 <th>Equipo / campo</th>
-                <th>Ventanas esperadas</th>
-                <th>Probabilidad</th>
+                <th>Cómo se ve</th>
                 <th>Horario</th>
               </tr>
             </thead>
@@ -138,13 +138,18 @@ export default function PossibleWindows({
                       <small>{row.field}</small>
                     </td>
                     <td>
-                      {row.expectedWindows < 0.1
-                        ? "<0,1"
-                        : row.expectedWindows.toLocaleString("es-AR", {
-                            maximumFractionDigits: 1,
-                          })}
+                      {workDayLabel(
+                        row.probability / 100,
+                        (row.source !== undefined &&
+                          row.source !== "pronóstico") ||
+                          row.date > addDays(localDate(), 7),
+                      )}
+                      <details>
+                        <summary>Ver porcentaje</summary>
+                        {probability(row.probability)} de escenarios con un día
+                        apto. No confirma el horario.
+                      </details>
                     </td>
-                    <td>{probability(row.probability)}</td>
                     <td>
                       {detail && "error" in detail ? (
                         <>
@@ -176,8 +181,8 @@ export default function PossibleWindows({
                           <small>{detail.message}</small>
                           {detail.window && (
                             <small>
-                              Acuerdo entre modelos: {detail.window.probability}
-                              % · hora argentina
+                              Hora argentina · revisá el pronóstico antes de
+                              salir.
                             </small>
                           )}
                           {detail.fetchedAt && (
