@@ -12,6 +12,14 @@ npm run db:generate
 npm run dev
 ```
 
+### Actualizaciones automáticas del proyecto
+
+`npm run dev` mantiene la aplicación local sincronizada con la rama de GitHub que estás usando. Revisa cada 15 segundos, descarga las nuevas versiones y reinicia el servidor y la página automáticamente. Si cambian dependencias o el esquema de Prisma, también prepara esos cambios. Dejá la terminal abierta; ya no hay que repetir `git pull` ni `npm run dev` por cada mejora.
+
+En Windows también podés iniciar con doble clic en **Abrir Climato.cmd**. Para activar esta función en una instalación anterior hay que hacer una última actualización y reiniciar una vez con `npm run dev`.
+
+Se conservan `data/`, `.env` y los cambios locales: si hay archivos modificados, commits locales que impiden avanzar o una colisión con archivos propios, la actualización se pausa y lo informa en la terminal. Si se corta la conexión, continúa sirviendo la versión instalada y vuelve a intentar. Al cerrar la ventana se detiene el servidor. Para desarrollar sin recibir cambios remotos, usá `npm run dev:manual`.
+
 Abrir http://127.0.0.1:3000. La persistencia por defecto es local: `data/state.json`, `data/research/`, `data/long-range/` y `data/snapshots/`. Los datos privados y las cachés están excluidos de Git. No hay autenticación; el servidor se limita a loopback.
 
 Al abrir la aplicación se inicia la carga automática. Si no hay equipos, importa el mapa de Google My Maps configurado; luego descarga el corto plazo, la malla de lluvia y viento, los históricos ERA5, NOAA y el pronóstico hasta fin de año. Una notificación muestra el progreso y los errores reales de cada fuente. No hace falta pulsar los botones de Fuentes. El servidor debe permanecer encendido; la descarga continúa al navegar o cerrar la pestaña. Al volver a abrir la app tras reiniciar, reutiliza los archivos ya guardados. Los errores se reintentan tras cinco minutos, y los datos vigentes se conservan. No modifica automáticamente equipos ya cargados.
