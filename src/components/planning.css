@@ -773,3 +773,59 @@
   background: #2e4856;
   color: #fff;
 }
+
+.planning-global-summary {
+  margin: 18px 0 24px;
+  padding: 18px;
+  background: #eaf3ef;
+  border: 1px solid #cbded4;
+  border-radius: 8px;
+}
+.planning-global-summary > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 14px;
+}
+.planning-global-days {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.planning-global-days > div {
+  min-width: 116px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+}
+.planning-global-days span,
+.planning-global-days strong,
+.planning-global-days small {
+  display: block;
+}
+.planning-global-days strong {
+  font-size: 23px;
+  color: #175840;
+  margin: 5px 0;
+}
+.planning-global-days small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.planning-technical {
+  margin: 12px 0;
+  font-size: 12px;
+}
+.planning-calendar td > strong {
+  font-size: 12px;
+}
+.planning-app .planning-day small {
+  white-space: normal;
+  font-size: 9px;
+}
+@media print {
+  .planning-global-days {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}

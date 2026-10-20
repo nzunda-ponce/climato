@@ -4,6 +4,7 @@ import {
   EnsembleAssessment,
   rulesSignature,
   dailyCapacity,
+  usableMemberGroups,
 } from "./evidence";
 
 export interface FrozenPrediction {
@@ -52,15 +53,18 @@ export function dayEvidence(ensemble: EnsembleAssessment, date: string) {
         : null,
     };
   });
-  const supported =
-    groups.length >= 2 &&
-    groups.every((g) => g.usable >= 10 && g.usable / g.total >= 0.8);
+  const eligible = usableMemberGroups(ensemble.paths, [date]);
+  const included = groups.filter((g) =>
+    eligible.some((e) => e.family === g.family),
+  );
+  const supported = included.length >= 2;
   return {
     supported,
     groups,
-    members: groups.reduce((s, g) => s + g.usable, 0),
+    families: included.length,
+    members: included.reduce((s, g) => s + g.usable, 0),
     probability: supported
-      ? groups.reduce((s, g) => s + g.probability!, 0) / groups.length
+      ? included.reduce((s, g) => s + g.probability!, 0) / included.length
       : null,
   };
 }
@@ -103,7 +107,7 @@ export function freezePredictions(
         capturedAt: now.toISOString(),
         fetchedAt: e.fetchedAt,
         probability: evidence.probability ?? 0,
-        families: evidence.groups.length,
+        families: evidence.families,
         members: evidence.members,
         signature,
         rules: { ...rules },

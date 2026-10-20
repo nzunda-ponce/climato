@@ -50,7 +50,7 @@ async function plan(): Promise<SyncTask[]> {
   const points = [
     ...new Map(
       state.pivots
-        .filter((p) => !locationWarning(p))
+        .filter((p) => !locationWarning(p) && p.status !== "TERMINADO")
         .map((p) => [cellKey(p.lat, p.lon), p]),
     ).entries(),
   ];

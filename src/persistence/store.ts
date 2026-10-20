@@ -20,6 +20,7 @@ export interface State {
   rules: Rules;
   forecasts: Record<string, WeatherForecast>;
   ensembles?: Record<string, EnsembleAssessment>;
+  ensembleFailures?: Record<string, { at: string; message: string }>;
   climate?: Record<string, HistoricalClimate>;
   observations?: Observation[];
   seasonal?: Record<string, SeasonalAssessment>;

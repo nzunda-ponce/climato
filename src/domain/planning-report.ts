@@ -20,6 +20,18 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
         isFresh(e.fetchedAt, now.getTime(), 12);
       return {
         ...zone,
+        dataStatus: !e
+          ? state.ensembleFailures?.[zone.key]
+            ? ("failed" as const)
+            : ("loading" as const)
+          : !valid
+            ? ("outdated" as const)
+            : e.errors.length
+              ? ("partial" as const)
+              : ("ready" as const),
+        dataErrors: state.ensembleFailures?.[zone.key]
+          ? [state.ensembleFailures[zone.key].message]
+          : (e?.errors ?? []),
         consecutive7:
           valid && zone.next7.scenarios
             ? scenarioConsecutiveDays(
@@ -55,10 +67,9 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
                     coverage:
                       w.coverage === undefined ? null : w.coverage / 100,
                     supported:
-                      (w.familyEvidence?.length ?? 0) >= 2 &&
-                      w.familyEvidence!.every(
+                      (w.familyEvidence?.filter(
                         (g) => g.usable >= 10 && g.usable / g.total >= 0.8,
-                      ),
+                      ).length ?? 0) >= 2,
                     basis: w.basis ?? "model-agreement",
                   }))
               : [];

@@ -207,3 +207,22 @@ test("consecutive-day statistics distinguish dispersed days from continuous work
     0,
   );
 });
+
+test("a shorter third source does not erase two well-covered sources for a date or a period", async () => {
+  const { scenarioDayCounts } =
+    await import("../src/domain/opportunity-report");
+  const e = ensemble();
+  e.paths.push(
+    ...Array.from({ length: 20 }, (_, i) => ({
+      family: "short-horizon",
+      member: String(i),
+      days: { "2026-10-21": null },
+    })),
+  );
+  assert.equal(dayEvidence(e, "2026-10-21").supported, true);
+  assert.equal(dayEvidence(e, "2026-10-21").probability, 0.75);
+  assert.equal(scenarioDayCounts(e.paths, ["2026-10-21"])!.expected, 0.75);
+  e.paths = e.paths.filter((p) => p.family !== "B");
+  assert.equal(dayEvidence(e, "2026-10-21").supported, false);
+  assert.equal(scenarioDayCounts(e.paths, ["2026-10-21"]), null);
+});

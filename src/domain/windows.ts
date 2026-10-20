@@ -64,7 +64,21 @@ export function calculateOperationalWindows(
       if (Date.parse(timestamp + "-03:00") < now.getTime()) continue;
       for (let end = start + rules.minHours; end <= rules.endHour; end++) {
         const mask = ((1 << (end - start)) - 1) << start;
-        const available = members.filter((m) => (m.available & mask) === mask);
+        let available = members.filter((m) => (m.available & mask) === mask);
+        const isEnsemble = members.some((m) => m.model.kind === "ensemble");
+        if (isEnsemble) {
+          const eligible = [...new Set(available.map((m) => m.family))].filter(
+            (f) => {
+              const count = available.filter((m) => m.family === f).length;
+              return (
+                count >= 10 &&
+                count / members.filter((m) => m.family === f).length >= 0.8
+              );
+            },
+          );
+          if (eligible.length >= 2)
+            available = available.filter((m) => eligible.includes(m.family));
+        }
         if (!available.length) continue;
         const dry = (m: (typeof members)[number]) =>
           windowRainEligible(
@@ -110,8 +124,12 @@ export function calculateOperationalWindows(
           0,
           (Date.parse(timestamp + "-03:00") - now.getTime()) / 86400000,
         );
-        const isEnsemble = available.some((m) => m.model.kind === "ensemble");
-        const coverage = available.length / Math.max(1, members.length);
+        const coverage =
+          available.length /
+          Math.max(
+            1,
+            members.filter((m) => families.includes(m.family)).length,
+          );
         const confidence = Math.round(
           100 *
             Math.exp(-days / 13) *

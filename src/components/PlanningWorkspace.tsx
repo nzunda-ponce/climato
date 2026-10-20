@@ -3,6 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PlanningReport, PlanningZone } from "@/domain/planning-report";
 import type { confusionReport } from "@/domain/forecast-validation";
 import type { Rules } from "@/domain/types";
+import {
+  globalDailyEstimates,
+  locationDayEstimate,
+  missingForecastLabel,
+} from "@/domain/planning-summary";
 import AutoSyncStatus from "./AutoSyncStatus";
 import "./planning.css";
 
@@ -116,12 +121,16 @@ export default function PlanningWorkspace() {
   const detailDay =
     focus?.daily.find((d) => d.date === selectedDate) ?? focus?.daily[0];
   const summaryField = horizon === 7 ? "next7" : "next14";
-  const covered = zones.filter((z) => z[summaryField].scenarios !== null);
-  const average =
-    covered.length === zones.length && zones.length
-      ? zones.reduce((s, z) => s + z[summaryField].scenarios!.expected, 0) /
-        zones.length
-      : null;
+  const estimates = zones
+    .map((z) => locationDayEstimate(z, dates))
+    .filter((e) => e.covered > 0);
+  const globalDays = globalDailyEstimates(zones, dates);
+  const average = estimates.length
+    ? estimates.reduce((sum, e) => sum + e.expected!, 0) / estimates.length
+    : null;
+  const coverageDays = estimates.length
+    ? estimates.reduce((sum, e) => sum + e.covered, 0) / estimates.length
+    : 0;
   const daysAbove = zones.reduce(
     (s, z) =>
       s +
@@ -407,9 +416,9 @@ export default function PlanningWorkspace() {
                     </select>
                   </label>
                   <label>
-                    Umbral de clasificación
+                    Probabilidad mínima
                     <select
-                      aria-label="Umbral de clasificación"
+                      aria-label="Probabilidad mínima"
                       value={threshold}
                       onChange={(e) => setThreshold(Number(e.target.value))}
                     >
@@ -435,9 +444,9 @@ export default function PlanningWorkspace() {
                       note={`${zones.length} ubicaciones analizadas individualmente`}
                     />
                     <Stat
-                      label="Días aptos esperados por ubicación"
+                      label="Días previstos por ubicación · fechas analizadas"
                       value={number(average)}
-                      note={`${covered.length}/${zones.length} ubicaciones con distribución completa · período de ${horizon} días`}
+                      note={`${estimates.length}/${zones.length} ubicaciones con datos · ${number(coverageDays)}/${dates.length} fechas analizadas en promedio. No extrapola los días pendientes.`}
                     />
                     <Stat
                       label={`Ubicación-días con probabilidad ≥ ${threshold}%`}
@@ -446,16 +455,42 @@ export default function PlanningWorkspace() {
                     />
                   </div>
                   <p className="planning-evidence-note">
-                    Probabilidad de al menos un ensayo completo en el día. Es
-                    una estimación del ensemble, todavía sin calibración local
-                    acreditada. El umbral clasifica los resultados; no aumenta
-                    su certeza.
+                    Una sola estimación combina los pronósticos disponibles. El
+                    porcentaje de cada equipo indica la probabilidad de tener al
+                    menos un ensayo completo ese día. Las ubicaciones aún sin
+                    descarga no se cuentan como días no aptos.
                   </p>
+                  <section
+                    className="planning-global-summary"
+                    aria-label="Estimación global"
+                  >
+                    <h3>Estimación global de las zonas seleccionadas</h3>
+                    <p>
+                      Disponibilidad media entre ubicaciones con datos. Por
+                      ejemplo, 80% equivale a 8 de cada 10 ubicaciones aptas en
+                      promedio; no garantiza cuáles lo estarán.
+                    </p>
+                    <div className="planning-global-days">
+                      {globalDays.map((d) => (
+                        <div key={d.date}>
+                          <span>{date(d.date)}</span>
+                          <strong>
+                            {d.probability === null
+                              ? "Cargando"
+                              : percent(d.probability)}
+                          </strong>
+                          <small>
+                            {d.covered}/{d.total} ubicaciones analizadas
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                   <div className="planning-table-scroll">
                     <table className="planning-calendar">
                       <caption>
                         Probabilidad diaria por ubicación. Elegí una celda para
-                        ver horarios y evidencia.
+                        ver horarios y el resultado combinado.
                       </caption>
                       <thead>
                         <tr>
@@ -475,6 +510,7 @@ export default function PlanningWorkspace() {
                       <tbody>
                         {zones.map((z) => {
                           const distribution = z[summaryField].scenarios;
+                          const estimate = locationDayEstimate(z, dates);
                           return (
                             <tr key={z.key}>
                               <th scope="row">
@@ -494,23 +530,32 @@ export default function PlanningWorkspace() {
                               </th>
                               <td>
                                 <strong>
-                                  {number(distribution?.expected)}
+                                  {estimate.expected === null
+                                    ? missingForecastLabel(z)
+                                    : number(
+                                        distribution?.expected ??
+                                          estimate.expected,
+                                      )}
                                 </strong>
                                 <small>
                                   {distribution
                                     ? `${distribution.range[0]}–${distribution.range[1]} días`
-                                    : "Cobertura insuficiente"}
+                                    : estimate.covered
+                                      ? `Sobre ${estimate.covered} de ${estimate.total} días`
+                                      : "Reintento automático"}
                                 </small>
-                                <small>
-                                  Racha más larga:{" "}
-                                  {z[
-                                    horizon === 7
-                                      ? "consecutive7"
-                                      : "consecutive14"
-                                  ]
-                                    ? `${z[horizon === 7 ? "consecutive7" : "consecutive14"]!.range[0]}–${z[horizon === 7 ? "consecutive7" : "consecutive14"]!.range[1]} días seguidos`
-                                    : "—"}
-                                </small>
+                                {distribution && (
+                                  <small>
+                                    Racha más larga:{" "}
+                                    {z[
+                                      horizon === 7
+                                        ? "consecutive7"
+                                        : "consecutive14"
+                                    ]
+                                      ? `${z[horizon === 7 ? "consecutive7" : "consecutive14"]!.range[0]}–${z[horizon === 7 ? "consecutive7" : "consecutive14"]!.range[1]} días seguidos`
+                                      : "Sin racha definida"}
+                                  </small>
+                                )}
                               </td>
                               {dates.map((day) => {
                                 const d = z.daily.find((d) => d.date === day),
@@ -529,13 +574,16 @@ export default function PlanningWorkspace() {
                                         setSelectedDate(day);
                                       }}
                                     >
-                                      {percent(d?.probability)}
+                                      {d?.probability === null ||
+                                      d?.probability === undefined
+                                        ? "Pendiente"
+                                        : percent(d.probability)}
                                       <small>
                                         {d?.supported
                                           ? strong
-                                            ? "≥ umbral"
-                                            : "< umbral"
-                                          : "Sin evidencia"}
+                                            ? "Cumple el mínimo"
+                                            : "Bajo el mínimo"
+                                          : missingForecastLabel(z)}
                                       </small>
                                     </button>
                                   </td>
@@ -565,20 +613,33 @@ export default function PlanningWorkspace() {
                       </div>
                       <div className="planning-detail-grid">
                         <div>
-                          <h4>Fundamento del resultado</h4>
+                          <h4>Estimación combinada para esta ubicación</h4>
                           <p>
                             {detailDay.supported
-                              ? `${detailDay.members} escenarios utilizables de ${detailDay.families} familias de modelos. Cada familia pesa lo mismo.`
-                              : "Evidencia insuficiente: se exigen al menos 2 familias, 10 miembros por familia y 80% de cobertura en cada una."}
+                              ? `Probabilidad de disponer de al menos ${report?.rules.minHours ?? 4} horas seguidas aptas: ${percent(detailDay.probability)}. Se combinan los pronósticos que cubren esta fecha.`
+                              : missingForecastLabel(focus) +
+                                ". La aplicación reintentará las descargas automáticamente."}
                           </p>
-                          <ul>
-                            {detailDay.evidence.map((e) => (
-                              <li key={e.family}>
-                                {e.family}: {e.usable}/{e.total} miembros ·{" "}
-                                {percent(e.probability)} con al menos un ensayo
-                              </li>
+                          <details className="planning-technical">
+                            <summary>Detalle técnico de las fuentes</summary>
+                            <p>
+                              Para combinar resultados se exigen al menos dos
+                              fuentes con suficientes simulaciones y cobertura.
+                              Una fuente sin cobertura en esta fecha no anula
+                              las otras.
+                            </p>
+                            <ul>
+                              {detailDay.evidence.map((e) => (
+                                <li key={e.family}>
+                                  {e.family}: {e.usable}/{e.total} miembros ·{" "}
+                                  {percent(e.probability)}
+                                </li>
+                              ))}
+                            </ul>
+                            {focus.dataErrors?.map((e, i) => (
+                              <p key={i}>{e}</p>
                             ))}
-                          </ul>
+                          </details>
                           <p>
                             Pronóstico descargado:{" "}
                             {focus.sources.ensembleAt
@@ -880,7 +941,7 @@ export default function PlanningWorkspace() {
               <p>
                 Fuera del horizonte de 14 días, los resultados son
                 experimentales y sirven para comparar períodos, no para fijar
-                fechas de ensayo. No tienen la misma evidencia que el ensemble
+                fechas de ensayo. No tienen la misma evidencia que el pronóstico
                 de corto plazo.
               </p>
               <div className="planning-table-scroll">
@@ -928,9 +989,9 @@ export default function PlanningWorkspace() {
                 </li>
                 <li>
                   La probabilidad diaria es la proporción de escenarios con al
-                  menos un ensayo. Cada familia meteorológica tiene el mismo
-                  peso. No se publica una probabilidad si falta cobertura
-                  mínima.
+                  menos un ensayo. Se combinan las fuentes que tienen datos
+                  suficientes para esa fecha, con igual peso entre ellas. Si
+                  falta información, se indica y se reintenta la descarga.
                 </li>
                 <li>
                   Los días esperados y su rango se calculan recorriendo
@@ -963,7 +1024,7 @@ export default function PlanningWorkspace() {
         >
           Windy
         </a>{" "}
-        · Meteorología: Open-Meteo / ensembles y ERA5. Las actualizaciones
+        · Meteorología: Open-Meteo / pronósticos y ERA5. Las actualizaciones
         automáticas requieren que el servidor de la aplicación siga encendido.
       </footer>
     </div>

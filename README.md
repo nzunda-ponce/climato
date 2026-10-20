@@ -88,3 +88,13 @@ npm run db:push
 ```
 
 Configurar `DATABASE_URL` en `.env` y aplicar `prisma/postgis.sql`. El estado y la validación se guardan como `AppState`; la caché meteorológica permanece local. No hay migración automática de datos locales existentes: exportar un respaldo antes de cambiar de modo.
+
+## Estimación integrada y cobertura
+
+La pantalla publica una sola estimación combinada, un resumen global de las ubicaciones seleccionadas y el detalle por ubicación. Las probabilidades por familia están dentro de «Detalle técnico de las fuentes».
+
+Una fuente que termina antes o tiene cobertura insuficiente no anula las fuentes que sí cubren esa fecha. Se siguen exigiendo al menos dos fuentes con diez miembros y 80% de cobertura cada una; se combinan sólo las que pasan ese mínimo. Los rangos de períodos completos usan las fuentes que cubren todo el período.
+
+El resumen diario global es el promedio de probabilidades entre ubicaciones con información, con igual peso y denominador visible por fecha. No es la probabilidad de que cualquier zona resulte apta ni una predicción para ubicaciones ausentes. Si faltan fechas, se muestran los días previstos únicamente sobre las fechas analizadas y se informa su cobertura, sin extrapolar días ni rachas desconocidas.
+
+La carga de corto plazo usa lotes de seis coordenadas, cuatro consultas de fuentes por lote y alternancia entre regiones. Se priorizan las ubicaciones aún sin registros y el cálculo integrado antes de las descargas determinísticas auxiliares. Los errores quedan guardados por ubicación y se distinguen de una descarga pendiente. Se solicitan 16 días horarios para el horizonte operativo, sin descargar los 35 días que antes se pedían para todas las fuentes.

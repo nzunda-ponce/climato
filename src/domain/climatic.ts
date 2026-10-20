@@ -4,6 +4,7 @@ import {
   EnsembleAssessment,
   HistoricalClimate,
   rulesSignature,
+  usableMemberGroups,
 } from "./evidence";
 import { SeasonalAssessment } from "./seasonal";
 
@@ -83,9 +84,16 @@ export function climatePotential(
         : undefined;
     for (let date = today; date <= rules.deadline; date = addDays(date, 1)) {
       const families = new Map<string, number[]>();
-      // Daily member totals do not describe the unelapsed remainder of today.
+      // Keep the low-level translator compatible with small research samples;
+      // the planning report applies the publication minimum. Use well-covered
+      // sources alone when at least two are available for this specific day.
+      const eligible = usableMemberGroups(ensemble?.paths ?? [], [date]);
+      const paths =
+        eligible.length >= 2
+          ? eligible.flatMap((g) => g.complete)
+          : (ensemble?.paths ?? []);
       if (date > today && date <= addDays(today, 14))
-        for (const path of ensemble?.paths ?? []) {
+        for (const path of paths) {
           const slots = path.days[date];
           if (slots === null || slots === undefined) continue;
           families.set(path.family, [

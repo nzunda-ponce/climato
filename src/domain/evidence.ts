@@ -39,6 +39,26 @@ export interface MemberPath {
   member: string;
   days: Record<string, number | null>;
 }
+// A source with a shorter horizon must not veto other well-covered sources.
+// Coverage is checked before combining, never by treating missing values as zero.
+export function usableMemberGroups(paths: MemberPath[], dates: string[]) {
+  return [...new Set(paths.map((p) => p.family))]
+    .map((family) => {
+      const all = paths.filter((p) => p.family === family);
+      const complete = all.filter((p) =>
+        dates.every(
+          (date) =>
+            typeof p.days[date] === "number" &&
+            Number.isFinite(p.days[date]) &&
+            p.days[date]! >= 0,
+        ),
+      );
+      return { family, all, complete };
+    })
+    .filter(
+      (g) => g.complete.length >= 10 && g.complete.length / g.all.length >= 0.8,
+    );
+}
 export interface EnsembleAssessment {
   key: string;
   lat: number;
