@@ -222,6 +222,7 @@ export async function openSqlite(
 }
 export async function openPostgres(
   url = process.env.DATABASE_URL,
+  options: { initialize?: boolean; readOnly?: boolean } = {},
 ): Promise<ApplicationDatabase> {
   if (!url) throw new Error("Falta configurar DATABASE_URL.");
   type PgClient = {
@@ -237,14 +238,15 @@ export async function openPostgres(
   };
   const db = new PrismaClient({ datasourceUrl: url }) as unknown as PgDatabase;
   try {
-    await db.$transaction(
-      async (p) => {
-        await p.$executeRawUnsafe("SELECT pg_advisory_xact_lock(193772001)");
-        await p.$executeRawUnsafe(schema);
-        for (const sql of indexes) await p.$executeRawUnsafe(sql);
-      },
-      { timeout: 30000, maxWait: 10000 },
-    );
+    if (options.initialize !== false)
+      await db.$transaction(
+        async (p) => {
+          await p.$executeRawUnsafe("SELECT pg_advisory_xact_lock(193772001)");
+          await p.$executeRawUnsafe(schema);
+          for (const sql of indexes) await p.$executeRawUnsafe(sql);
+        },
+        { timeout: 30000, maxWait: 10000 },
+      );
   } catch (e) {
     await db.$disconnect();
     throw e;
@@ -376,11 +378,18 @@ export async function openPostgres(
   return {
     kind: "postgresql",
     read: (fn) =>
-      db.$transaction((p) => fn(transaction(p)), {
-        isolationLevel: "RepeatableRead",
-        timeout: 30000,
-        maxWait: 10000,
-      }),
+      db.$transaction(
+        async (p) => {
+          if (options.readOnly)
+            await p.$executeRawUnsafe("SET TRANSACTION READ ONLY");
+          return fn(transaction(p));
+        },
+        {
+          isolationLevel: "RepeatableRead",
+          timeout: 30000,
+          maxWait: 10000,
+        },
+      ),
     transaction: (fn) =>
       db.$transaction(
         async (p) => {

@@ -5,6 +5,7 @@ import "./console.css";
 import DevAutoReload from "@/components/DevAutoReload";
 export const metadata: Metadata = {
   title: "Climato · Planificación de uniformidades",
+  robots: { index: false, follow: false },
   description:
     "Planificación de ensayos por ubicación, escenarios de días aptos y validación de pronósticos.",
 };

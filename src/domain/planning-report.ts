@@ -188,5 +188,7 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
     }),
   };
 }
-export type PlanningReport = ReturnType<typeof buildPlanningReport>;
+export type PlanningReport = ReturnType<typeof buildPlanningReport> & {
+  publication?: {at:string; stale:boolean; pendingChanges:boolean; readOnly:boolean};
+};
 export type PlanningZone = PlanningReport["zones"][number];

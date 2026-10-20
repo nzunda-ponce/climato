@@ -1,15 +1,14 @@
-import { acquireSyncLease } from "@/persistence/store";
+import { createDataRunner } from "@/jobs/data-runner";
 import { readState, mutateState, mergeClimateBatch } from "@/persistence/store";
 import { parsePivots } from "@/domain/import";
 import { syncPivots } from "@/domain/sync-pivots";
 import { cellKey, rulesSignature } from "@/domain/evidence";
 import { localDate, locationWarning } from "@/domain/types";
 import { EnsoIndex } from "@/domain/seasonal";
-import { operationalSync } from "./operational-sync";
 import { loadEnso, readLongCache } from "./long-range";
 import { loadHistoryYearBatch } from "./history-batch";
 import { fairEnsembleOrder } from "./ensemble-order";
-import { createSyncRunner, SyncTask } from "./sync-runner";
+import { SyncTask } from "./sync-runner";
 
 const fresh = (date: string | undefined, hours: number) => {
   const age = date ? Date.now() - Date.parse(date) : NaN;
@@ -70,14 +69,6 @@ async function plan(): Promise<SyncTask[]> {
       },
     });
   }
-  tasks.push({
-    label: "Actualizando pronóstico de corto plazo",
-    run: async () => {
-      void operationalSync.start();
-      // The status endpoint reads this lane's live errors directly. Copying
-      // them into a long-running historical job would keep resolved errors visible.
-    },
-  });
   const ordered = fairEnsembleOrder(points, (key) => !!state.climate?.[key]);
   const last = Number(localDate().slice(0, 4)) - 1;
   // One recent season for every location before proceeding to the next year.
@@ -107,10 +98,9 @@ async function plan(): Promise<SyncTask[]> {
   return tasks;
 }
 const shared = globalThis as unknown as {
-  climatoAutoSync?: ReturnType<typeof createSyncRunner>;
+  climatoAutoSync?: ReturnType<typeof createDataRunner>;
 };
-export const autoSync = (shared.climatoAutoSync ??= createSyncRunner(
+export const autoSync = (shared.climatoAutoSync ??= createDataRunner(
+  "history",
   plan,
-  Date.now,
-  () => acquireSyncLease("history"),
 ));

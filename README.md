@@ -16,7 +16,7 @@ Abrir <http://127.0.0.1:3000>. En Windows también se puede iniciar con doble cl
 
 `npm run dev` revisa cada 15 segundos la rama de GitHub configurada y actualiza código, dependencias y servidor. También recarga la página. Para activar esto en una instalación anterior hay que actualizar una vez y reiniciar con `npm run dev`. Con cambios locales o ramas divergentes, la actualización se pausa sin sobrescribirlos. `npm run dev:manual` permite desarrollar sin sincronización remota.
 
-El servidor debe seguir encendido para descargar datos y archivar estimaciones, aunque nadie esté mirando la página. Si se apaga, no se inventan pronósticos para las fechas perdidas. La herramienta se puede consultar ocasionalmente; una instalación local apagada no puede construir una validación diaria continua.
+En la instalación local existente, el servidor debe seguir encendido para descargar datos y archivar estimaciones, aunque nadie esté mirando la página. Una vez activados el trabajador y la web remotos, esa función deja de depender de la PC. Si se apaga, no se inventan pronósticos para las fechas perdidas. La herramienta se puede consultar ocasionalmente; una instalación local apagada no puede construir una validación diaria continua.
 
 ## Nueva pantalla de planificación
 
@@ -68,6 +68,12 @@ Cada ubicación y fecha cuentan una sola vez por anticipación. No se mezclan cr
 Las instalaciones anteriores no guardaban estos ensembles de manera inmutable con su versión de criterios. No se reconstruyen estimaciones pasadas usando modelos actuales. La matriz puede empezar vacía y se completa automáticamente con datos genuinos. Se retienen 60 días de objetivos para alimentar la ventana móvil.
 
 La validación del **entrenamiento de análogos** se presenta aparte: entrenamiento hasta 2015, prueba temporal desde 2016 y Brier frente a una referencia mensual. Usa condiciones reconstruidas del propio día; no mide habilidad de anticipación meteorológica ni sustituye la matriz operativa. Faltan registros de campo e hindcasts estacionales para medir la habilidad final de largo plazo.
+
+## Informe compartido sin depender de una PC
+
+La web de consulta (`CLIMATO_ROLE=web`, automático en Vercel) lee resultados publicados en Neon y no inicia descargas ni cálculos de disponibilidad por visita. Los procesos independientes `data:bootstrap`, `data:refresh` y `data:publish` preparan los históricos, mantienen el pronóstico y publican el informe. Se conservan el avance y la última publicación completa; las fuentes vencidas se identifican explícitamente.
+
+Se incluye un workflow de GitHub Actions para la actualización programada. **Requiere activación en la rama predeterminada y configurar los secretos; no está activo sólo por subir esta rama.** El alojamiento de la web también requiere conectar su cuenta. Ver [activación del informe compartido](docs/shared-report.md).
 
 ## Datos y actualización
 

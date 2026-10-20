@@ -1,9 +1,9 @@
-import { acquireSyncLease } from "@/persistence/store";
+import { createDataRunner } from "@/jobs/data-runner";
 import { readState, mutateState } from "@/persistence/store";
 import { addDays, Hour, localDate } from "@/domain/types";
 import { alignHourlyIntervals } from "@/domain/evidence";
 import { verifyPredictionDays } from "@/domain/forecast-validation";
-import { createSyncRunner, SyncTask } from "./sync-runner";
+import { SyncTask } from "./sync-runner";
 
 // ERA5 is a retrospective weather reference, not a field observation. It has
 // publication latency; absent hours remain unverified and never count as dry.
@@ -109,9 +109,7 @@ export async function verificationTasks(): Promise<SyncTask[]> {
   return tasks;
 }
 const shared = globalThis as unknown as {
-  climatoVerificationSync?: ReturnType<typeof createSyncRunner>;
+  climatoVerificationSync?: ReturnType<typeof createDataRunner>;
 };
 export const verificationSync = (shared.climatoVerificationSync ??=
-  createSyncRunner(verificationTasks, Date.now, () =>
-    acquireSyncLease("verification"),
-  ));
+  createDataRunner("verification", verificationTasks));

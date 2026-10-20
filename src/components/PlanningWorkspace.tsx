@@ -239,7 +239,7 @@ export default function PlanningWorkspace() {
                   })
                 : "Cargando…"}
             </strong>
-            <span>Hora argentina · actualización diaria automática</span>
+            <span>Hora de Argentina</span>
             {view === "datos" && <StorageStatus />}
           </div>
         </section>
@@ -253,27 +253,56 @@ export default function PlanningWorkspace() {
             </button>
           </div>
         )}
+        {report?.publication?.stale && (
+          <div className="planning-alert" role="alert">
+            Este informe corresponde al{" "}
+            {new Date(report.computedAt).toLocaleDateString("es-AR", {
+              timeZone: "America/Argentina/Buenos_Aires",
+            })}
+            . La actualización programada está atrasada; los resultados no deben
+            tomarse como un pronóstico vigente.
+          </div>
+        )}
+        {report?.publication?.pendingChanges && (
+          <div className="planning-alert" role="status">
+            Hay datos nuevos pendientes de publicar. Se muestra el último
+            informe completo.
+          </div>
+        )}
         {view === "datos" && (
           <section className="planning-data-tools">
             <h2>Actualización y almacenamiento</h2>
             <AutoSyncStatus inline onReload={load} />
             <div>
-              <button onClick={() => setSettings((v) => !v)}>
-                {settings ? "Cerrar criterios" : "Editar criterios del ensayo"}
-              </button>
+              {!report?.publication?.readOnly && (
+                <button onClick={() => setSettings((v) => !v)}>
+                  {settings
+                    ? "Cerrar criterios"
+                    : "Editar criterios del ensayo"}
+                </button>
+              )}
+              {report?.publication?.readOnly && (
+                <p className="planning-muted">
+                  Informe de consulta. Los criterios y las descargas se
+                  administran fuera de este enlace.
+                </p>
+              )}
               <button onClick={() => window.print()}>Imprimir informe</button>
             </div>
           </section>
         )}
-        {view === "datos" && settings && report && (
-          <RulesEditor
-            rules={report.rules}
-            onSaved={async () => {
-              await load();
-              setSettings(false);
-            }}
-          />
-        )}
+        {view === "datos" &&
+          settings &&
+          report &&
+          !report.publication?.readOnly && (
+            <RulesEditor
+              rules={report.rules}
+              onSaved={async () => {
+                await load();
+                setSettings(false);
+              }}
+            />
+          )}
         {view === "datos" && report && (
           <div className="planning-criteria">
             <strong>Ensayo apto:</strong> {report.rules.minHours} h consecutivas
@@ -1146,6 +1175,22 @@ export default function PlanningWorkspace() {
                 </div>
               </section>
             )}
+            {report?.publication?.stale && (
+              <div className="planning-alert" role="alert">
+                Este informe corresponde al{" "}
+                {new Date(report.computedAt).toLocaleDateString("es-AR", {
+                  timeZone: "America/Argentina/Buenos_Aires",
+                })}
+                . La actualización programada está atrasada; los resultados no
+                deben tomarse como un pronóstico vigente.
+              </div>
+            )}
+            {report?.publication?.pendingChanges && (
+              <div className="planning-alert" role="status">
+                Hay datos nuevos pendientes de publicar. Se muestra el último
+                informe completo.
+              </div>
+            )}
             {view === "datos" && (
               <section className="planning-method">
                 <h2>Cómo se estima la disponibilidad</h2>
@@ -1207,8 +1252,10 @@ export default function PlanningWorkspace() {
         >
           Windy
         </a>{" "}
-        · Meteorología: Open-Meteo / pronósticos y ERA5. Las actualizaciones
-        automáticas requieren que el servidor de la aplicación siga encendido.
+        · Meteorología: Open-Meteo / pronósticos y ERA5.{" "}
+        {report?.publication?.readOnly
+          ? "Informe de consulta: los datos se preparan en un proceso independiente."
+          : "Actualización local: mantener el proceso de datos en ejecución."}
       </footer>
     </div>
   );

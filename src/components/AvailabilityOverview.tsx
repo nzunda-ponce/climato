@@ -71,7 +71,7 @@ export default function AvailabilityOverview({
     zones,
     zones[0]?.outlook.map((d) => d.date) ?? [],
   );
-  const best = days
+  const best = (report?.publication?.stale ? [] : days)
     .map((d) => ({ date: d, cell: availabilityCell(zones, [d]) }))
     .filter((d) => d.cell.complete)
     .sort((a, b) => b.cell.probability! - a.cell.probability!)[0];
@@ -173,7 +173,11 @@ export default function AvailabilityOverview({
             </button>
           </div>
           <div className="availability-primary-stat">
-            <span>Próximos {days.length || 14} días</span>
+            <span>
+              {report?.publication?.stale
+                ? `Período ${date(report.start)}–${date(days.at(-1) ?? report.start)}`
+                : `Próximos ${days.length || 14} días`}
+            </span>
             <strong>
               {number(next.expected)} <small>días</small>
             </strong>
@@ -208,7 +212,11 @@ export default function AvailabilityOverview({
             </div>
           </div>
           <div className="availability-best-day">
-            <span>Mayor disponibilidad en los próximos 14 días</span>
+            <span>
+              {report?.publication?.stale
+                ? "Informe pendiente de actualizar"
+                : "Mayor disponibilidad en los próximos 14 días"}
+            </span>
             <strong>
               {best
                 ? `${date(best.date)} · ${percent(best.cell.probability)}`
@@ -242,7 +250,7 @@ export default function AvailabilityOverview({
             <h2 id="availability-heading">Disponibilidad por zona</h2>
             <p>
               {mode === "days"
-                ? "Próximos 14 días · probabilidad diaria de al menos un ensayo completo"
+                ? `${report?.publication?.stale ? "Período publicado" : "Próximos 14 días"} · probabilidad diaria de al menos un ensayo completo`
                 : `Hasta ${report ? date(report.deadline) : "fin de campaña"} · días esperados por semana y ubicación`}
             </p>
           </div>

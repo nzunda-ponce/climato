@@ -1,3 +1,4 @@
+import { isReportServer } from "@/runtime/role";
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/persistence/store";
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export async function GET() {
       !["localhost", "127.0.0.1", "[::1]"].includes(hostname);
     return NextResponse.json(
       {
+        readOnly: isReportServer(),
         cloud,
         backend: db.kind,
         migrated: info.migrated,

@@ -14,7 +14,10 @@
     "db:migrate": "node --import tsx scripts/database.ts migrate",
     "db:status": "node --import tsx scripts/database.ts status",
     "db:backup": "node --import tsx scripts/database.ts backup",
-    "db:restore": "node --import tsx scripts/database.ts restore"
+    "db:restore": "node --import tsx scripts/database.ts restore",
+    "data:bootstrap": "node --import tsx scripts/data-worker.ts bootstrap",
+    "data:refresh": "node --import tsx scripts/data-worker.ts refresh",
+    "data:publish": "node --import tsx scripts/data-worker.ts publish"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",

@@ -17,7 +17,7 @@ const zone = (region: string, values: (number | null)[], equipment = 1) =>
       probability: p,
       source: i === 0 ? "pronóstico" : "histórico",
     })),
-  }) as PlanningZone;
+  }) as unknown as PlanningZone;
 test("daily regional means weight coordinates equally and never multiply by equipment count", () => {
   const cell = availabilityCell(
     [zone("Centro", [0.8], 100), zone("Centro", [0.4], 1)],

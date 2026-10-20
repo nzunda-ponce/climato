@@ -1,3 +1,4 @@
+import { isReportServer } from "@/runtime/role";
 import { randomUUID } from "node:crypto";
 import {
   defaultRules,
@@ -57,10 +58,23 @@ let lastPrune = 0;
 export async function getDatabase() {
   if (!globalStore.climatoDatabase)
     globalStore.climatoDatabase = (async () => {
+      const reportOnly = isReportServer();
+      if (reportOnly && !process.env.DATABASE_URL?.trim())
+        throw new Error("El servidor de consulta requiere DATABASE_URL.");
       const db = process.env.DATABASE_URL?.trim()
-        ? await openPostgres()
+        ? await openPostgres(undefined, {
+            initialize: !reportOnly,
+            readOnly: reportOnly,
+          })
         : await openSqlite();
       try {
+        if (reportOnly)
+          return {
+            ...db,
+            transaction: async () => {
+              throw new Error("La web de consulta no modifica datos.");
+            },
+          };
         await migrateLegacy(db);
         return db;
       } catch (e) {

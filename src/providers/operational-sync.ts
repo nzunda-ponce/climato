@@ -1,4 +1,4 @@
-import { acquireSyncLease } from "@/persistence/store";
+import { createDataRunner } from "@/jobs/data-runner";
 import {
   readState,
   mutateState,
@@ -13,7 +13,7 @@ import { fairEnsembleOrder } from "./ensemble-order";
 import { loadEnsembleBatch } from "./research";
 import { OpenMeteoProvider } from "./weather";
 import { loadSeasonal } from "./long-range";
-import { createSyncRunner, SyncTask } from "./sync-runner";
+import { SyncTask } from "./sync-runner";
 const fresh = (date: string | undefined, hours: number) =>
   isFresh(date, Date.now(), hours);
 async function plan() {
@@ -124,7 +124,9 @@ async function plan() {
         const errors = results.filter((r) => r.error);
         if (errors.length)
           throw new Error(
-            `${errors.length} ubicaciones con descargas incompletas; reintento automático.`,
+            errors.some((r) => /HTTP 429/.test(r.error ?? ""))
+              ? "HTTP 429: el proveedor limitó las solicitudes. Se pausa la descarga para respetar su límite."
+              : `${errors.length} ubicaciones con descargas incompletas: ${[...new Set(errors.map((r) => r.error))].slice(0, 3).join(" · ")}`,
           );
       },
     });
@@ -172,7 +174,7 @@ async function plan() {
   return tasks;
 }
 const shared = globalThis as unknown as {
-  climatoOperationalSync?: ReturnType<typeof createSyncRunner>;
+  climatoOperationalSync?: ReturnType<typeof createDataRunner>;
 };
 export const operationalSync = (shared.climatoOperationalSync ??=
-  createSyncRunner(plan, Date.now, () => acquireSyncLease("weather")));
+  createDataRunner("weather", plan));
