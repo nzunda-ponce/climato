@@ -12,7 +12,8 @@ export interface ClimateDay {
   date: string;
   probability: number | null;
   slots: number | null;
-  source: "pronóstico" | "subestacional" | "estacional" | "sin datos";
+  source:
+    "pronóstico" | "subestacional" | "estacional" | "histórico" | "sin datos";
 }
 export interface ClimateZone {
   key: string;

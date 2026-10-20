@@ -33,6 +33,14 @@ export function globalDailyEstimates(
         ? values.reduce((s, p) => s + p, 0) / values.length
         : null,
       covered: values.length,
+      historical: zones.filter((z) =>
+        z.daily.some(
+          (d) =>
+            d.date === date &&
+            d.source === "histórico" &&
+            d.probability !== null,
+        ),
+      ).length,
       total: zones.length,
     };
   });
@@ -45,4 +53,28 @@ export function missingForecastLabel(zone: Pick<PlanningZone, "dataStatus">) {
       : zone.dataStatus === "outdated"
         ? "Actualizando pronóstico"
         : "Pronóstico incompleto";
+}
+
+export function globalWeeklyEstimates(zones: Pick<PlanningZone, "weekly">[]) {
+  return (zones[0]?.weekly ?? []).map((week, index) => {
+    const rows = zones.map((z) => z.weekly[index]).filter(Boolean);
+    const available = rows.filter((w) => w.partialExpectedDays !== null);
+    return {
+      start: week.start,
+      end: week.end,
+      total: zones.length,
+      covered: available.length,
+      expected: available.length
+        ? available.reduce((s, w) => s + w.partialExpectedDays!, 0) /
+          available.length
+        : null,
+      complete:
+        available.length > 0 && available.every((w) => w.covered === w.total),
+      historical: available.reduce((s, w) => s + w.historicalDays, 0),
+      forecast: available.reduce(
+        (s, w) => s + w.shortTermDays + w.subseasonalDays + w.seasonalDays,
+        0,
+      ),
+    };
+  });
 }

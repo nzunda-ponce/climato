@@ -829,3 +829,26 @@
     overflow: visible;
   }
 }
+
+.planning-weekly-summary {
+  padding: 18px;
+  margin: 20px 0;
+  border: 1px solid #c4d5e1;
+  border-radius: 8px;
+  background: #f0f5f9;
+}
+.planning-weekly-summary > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 9px 0 15px;
+}
+.planning-weekly-summary .planning-global-days > div {
+  min-width: 155px;
+}
+.planning-weekly-summary details {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.planning-weekly-summary .planning-global-days strong {
+  color: #234d68;
+}

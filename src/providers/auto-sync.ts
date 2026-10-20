@@ -5,12 +5,10 @@ import { cellKey, rulesSignature } from "@/domain/evidence";
 import { localDate, locationWarning } from "@/domain/types";
 import { EnsoIndex } from "@/domain/seasonal";
 import { operationalSync } from "./operational-sync";
-import {
-  loadEnso,
-  loadLongHistory,
-  loadSeasonal,
-  readLongCache,
-} from "./long-range";
+import { loadEnso, readLongCache } from "./long-range";
+import { loadHistoryYearBatch } from "./history-batch";
+import { mergeHistory } from "@/domain/history-training";
+import { fairEnsembleOrder } from "./ensemble-order";
 import { createSyncRunner, SyncTask } from "./sync-runner";
 
 const fresh = (date: string | undefined, hours: number) => {
@@ -72,53 +70,42 @@ async function plan(): Promise<SyncTask[]> {
   tasks.push({
     label: "Actualizando pronóstico de corto plazo",
     run: async () => {
-      await operationalSync.start();
+      void operationalSync.start();
       // The status endpoint reads this lane's live errors directly. Copying
       // them into a long-running historical job would keep resolved errors visible.
     },
   });
-  for (const [key, p] of points) {
-    const history = state.climate?.[key];
-    const needsHistory =
-      !history ||
-      history.rulesSignature !== signature ||
-      history.years.length !== 45 ||
-      history.years.at(-1) !== Number(localDate().slice(0, 4)) - 1;
-    const forecast = state.seasonal?.[key];
-    if (
-      !needsHistory &&
-      fresh(forecast?.fetchedAt, 12) &&
-      forecast?.rulesSignature === signature &&
-      !forecast.errors.length &&
-      forecast.days[state.rules.deadline]
-    )
-      continue;
-    tasks.push({
-      label: `${needsHistory ? "Históricos ERA5 y pronóstico" : "Pronóstico hasta fin de año"} · zona ${key}`,
-      run: async () => {
-        const h = needsHistory
-          ? await loadLongHistory(
-              key,
-              p.lat,
-              p.lon,
-              state.rules,
-              await loadEnso(),
-            )
-          : history;
-        // Persist history before requesting the forecast, so a forecast failure cannot lose it.
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.climate ??= {})[key] = h;
-        });
-        const result = await loadSeasonal(key, p.lat, p.lon, state.rules, h);
-        await mutateState((s) => {
-          if (rulesSignature(s.rules) === signature)
-            (s.seasonal ??= {})[key] = result;
-        });
-        if (result.errors.length) throw new Error(result.errors.join(" · "));
-      },
-    });
+  const ordered = fairEnsembleOrder(points, (key) => !!state.climate?.[key]);
+  const last = Number(localDate().slice(0, 4)) - 1;
+  // One recent season for every location before proceeding to the next year.
+  // This yields an initial ten-year baseline everywhere before extending to 45.
+  for (let offset = 0; offset < 45; offset++) {
+    const year = last - offset;
+    const missing = ordered.filter(
+      ([key]) =>
+        state.climate?.[key]?.rulesSignature !== signature ||
+        !state.climate[key].years.includes(year),
+    );
+    for (let i = 0; i < missing.length; i += 6) {
+      const batch = missing
+        .slice(i, i + 6)
+        .map(([key, p]) => ({ key, lat: p.lat, lon: p.lon }));
+      tasks.push({
+        label: `Referencia histórica ${year} · ${Math.min(i + 6, missing.length)}/${missing.length} ubicaciones · ${offset < 10 ? "base inicial de 10 años" : "ampliando a 45 años"}`,
+        run: async () => {
+          const results = await loadHistoryYearBatch(batch, year, state.rules);
+          await mutateState((s) => {
+            if (rulesSignature(s.rules) !== signature) return;
+            for (const h of results)
+              if (s.pivots.some((p) => cellKey(p.lat, p.lon) === h.key))
+                (s.climate ??= {})[h.key] = mergeHistory(s.climate?.[h.key], h);
+          });
+        },
+      });
+    }
   }
+  // Seasonal forecasts have an independent lane once sufficient history is
+  // available. NOAA is a separate diagnostic and cannot block ERA5 imports.
   return tasks;
 }
 const shared = globalThis as unknown as {

@@ -104,7 +104,7 @@ test("withholds unsupported daily estimates and hourly windows with a poorly cov
   )!.daily[0];
   assert.equal(day.probability, null);
   assert.equal(day.supported, false);
-  assert.equal(day.windows[0].supported, false);
+  assert.deepEqual(day.windows, []);
 });
 test("stale forecasts cannot supply probabilities, windows or run distributions", () => {
   const s = state();

@@ -5,6 +5,7 @@ import type { confusionReport } from "@/domain/forecast-validation";
 import type { Rules } from "@/domain/types";
 import {
   globalDailyEstimates,
+  globalWeeklyEstimates,
   locationDayEstimate,
   missingForecastLabel,
 } from "@/domain/planning-summary";
@@ -120,11 +121,20 @@ export default function PlanningWorkspace() {
   const focus = zones.find((z) => z.key === focused) ?? zones[0];
   const detailDay =
     focus?.daily.find((d) => d.date === selectedDate) ?? focus?.daily[0];
+  const sourceAt = !focus
+    ? null
+    : detailDay?.source === "histórico"
+      ? focus.sources.historyAt
+      : detailDay?.source === "subestacional" ||
+          detailDay?.source === "estacional"
+        ? focus.sources.seasonalAt
+        : focus.sources.ensembleAt;
   const summaryField = horizon === 7 ? "next7" : "next14";
   const estimates = zones
     .map((z) => locationDayEstimate(z, dates))
     .filter((e) => e.covered > 0);
   const globalDays = globalDailyEstimates(zones, dates);
+  const globalWeeks = globalWeeklyEstimates(zones);
   const average = estimates.length
     ? estimates.reduce((sum, e) => sum + e.expected!, 0) / estimates.length
     : null;
@@ -399,7 +409,7 @@ export default function PlanningWorkspace() {
                   <p className="planning-eyebrow">
                     DISPONIBILIDAD POR UBICACIÓN
                   </p>
-                  <h2>Próximos {horizon} días</h2>
+                  <h2>Disponibilidad para la campaña</h2>
                 </div>
                 <div className="planning-controls">
                   <label>
@@ -454,11 +464,113 @@ export default function PlanningWorkspace() {
                       note="No equivale a días distintos ni a trabajos ejecutables"
                     />
                   </div>
+                  <section
+                    className="planning-weekly-summary"
+                    aria-label="Estimación semanal hasta fin de campaña"
+                  >
+                    <h3>
+                      Ventanas semanales hasta{" "}
+                      {report ? date(report.deadline) : "fin de campaña"}
+                    </h3>
+                    <p>
+                      Días aptos estimados por ubicación seleccionada. Cuando
+                      falta pronóstico se utiliza el historial de estas mismas
+                      fechas, con al menos diez años. La base histórica orienta
+                      la planificación; no anticipa el tiempo de una semana
+                      concreta.
+                    </p>
+                    <div className="planning-global-days">
+                      {globalWeeks.map((w) => (
+                        <div key={w.start}>
+                          <span>
+                            {date(w.start)}–{date(w.end)}
+                          </span>
+                          <strong>
+                            {w.expected === null
+                              ? "Cargando"
+                              : `${number(w.expected)} días`}
+                          </strong>
+                          <small>
+                            {w.historical
+                              ? w.forecast
+                                ? "Pronóstico + historia"
+                                : "Base histórica"
+                              : "Pronóstico"}
+                          </small>
+                          <small>
+                            {w.covered}/{w.total} ubicaciones
+                            {!w.complete && w.covered > 0
+                              ? " · fechas parciales"
+                              : ""}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                    <details>
+                      <summary>
+                        Ver semanas por ubicación y referencia histórica
+                      </summary>
+                      <div className="planning-table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Ubicación / equipos</th>
+                              {globalWeeks.map((w) => (
+                                <th key={w.start}>
+                                  {date(w.start)}–{date(w.end)}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {zones.map((z) => (
+                              <tr key={z.key}>
+                                <th>
+                                  {group(z)}
+                                  <small>
+                                    {z.equipment.map((e) => e.name).join(" / ")}
+                                  </small>
+                                </th>
+                                {z.weekly.map((w) => (
+                                  <td key={w.start}>
+                                    <strong>
+                                      {w.partialExpectedDays === null
+                                        ? `Cargando históricos (${z.sources.historyYears}/10 años mínimos)`
+                                        : `${number(w.expectedDays ?? w.partialExpectedDays)} días`}
+                                    </strong>
+                                    <small>
+                                      {w.historicalDays
+                                        ? w.historicalDays === w.total
+                                          ? "Base histórica"
+                                          : "Pronóstico + historia"
+                                        : "Pronóstico"}{" "}
+                                      · {w.covered}/{w.total} fechas
+                                    </small>
+                                    {w.historicalReference && (
+                                      <small>
+                                        Referencia histórica:{" "}
+                                        {w.historicalReference.range[0]}–
+                                        {w.historicalReference.range[1]} días en
+                                        el 80% central de{" "}
+                                        {w.historicalReference.years} años
+                                      </small>
+                                    )}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  </section>
+                  <h3>Detalle diario · próximos {horizon} días</h3>
                   <p className="planning-evidence-note">
-                    Una sola estimación combina los pronósticos disponibles. El
-                    porcentaje de cada equipo indica la probabilidad de tener al
-                    menos un ensayo completo ese día. Las ubicaciones aún sin
-                    descarga no se cuentan como días no aptos.
+                    Una sola estimación combina el pronóstico y, cuando falta,
+                    la referencia histórica. Las celdas «Base histórica»
+                    muestran la frecuencia pasada de días aptos en esas fechas;
+                    no confirman el tiempo de ese día. Los datos pendientes no
+                    se cuentan como días no aptos.
                   </p>
                   <section
                     className="planning-global-summary"
@@ -481,6 +593,11 @@ export default function PlanningWorkspace() {
                           </strong>
                           <small>
                             {d.covered}/{d.total} ubicaciones analizadas
+                          </small>
+                          <small>
+                            {d.historical
+                              ? `${d.historical} con base histórica`
+                              : "Pronóstico"}
                           </small>
                         </div>
                       ))}
@@ -561,6 +678,7 @@ export default function PlanningWorkspace() {
                                 const d = z.daily.find((d) => d.date === day),
                                   strong =
                                     d?.supported &&
+                                    d.source !== "histórico" &&
                                     d.probability !== null &&
                                     d.probability !== undefined &&
                                     d.probability >= threshold / 100;
@@ -579,11 +697,16 @@ export default function PlanningWorkspace() {
                                         ? "Pendiente"
                                         : percent(d.probability)}
                                       <small>
-                                        {d?.supported
-                                          ? strong
-                                            ? "Cumple el mínimo"
-                                            : "Bajo el mínimo"
-                                          : missingForecastLabel(z)}
+                                        {d?.source === "histórico"
+                                          ? "Base histórica"
+                                          : d?.source === "subestacional" ||
+                                              d?.source === "estacional"
+                                            ? "Proyección"
+                                            : d?.supported
+                                              ? strong
+                                                ? "Cumple el mínimo"
+                                                : "Bajo el mínimo"
+                                              : missingForecastLabel(z)}
                                       </small>
                                     </button>
                                   </td>
@@ -615,18 +738,23 @@ export default function PlanningWorkspace() {
                         <div>
                           <h4>Estimación combinada para esta ubicación</h4>
                           <p>
-                            {detailDay.supported
-                              ? `Probabilidad de disponer de al menos ${report?.rules.minHours ?? 4} horas seguidas aptas: ${percent(detailDay.probability)}. Se combinan los pronósticos que cubren esta fecha.`
-                              : missingForecastLabel(focus) +
-                                ". La aplicación reintentará las descargas automáticamente."}
+                            {detailDay.source === "histórico"
+                              ? `Base histórica de ${detailDay.historyYears} años: ${percent(detailDay.probability)} de días aptos en estas fechas. Para decidir la salida, consultá el pronóstico cuando esté disponible.`
+                              : detailDay.source === "subestacional" ||
+                                  detailDay.source === "estacional"
+                                ? `Proyección meteorológica: ${percent(detailDay.probability)} de disponibilidad diaria estimada. Usala para comparar períodos; el horario aún no está definido.`
+                                : detailDay.supported
+                                  ? `Probabilidad de disponer de al menos ${report?.rules.minHours ?? 4} horas seguidas aptas: ${percent(detailDay.probability)}. Se combinan los pronósticos que cubren esta fecha.`
+                                  : missingForecastLabel(focus) +
+                                    ". La aplicación reintentará las descargas automáticamente."}
                           </p>
                           <details className="planning-technical">
                             <summary>Detalle técnico de las fuentes</summary>
                             <p>
-                              Para combinar resultados se exigen al menos dos
-                              fuentes con suficientes simulaciones y cobertura.
-                              Una fuente sin cobertura en esta fecha no anula
-                              las otras.
+                              Para combinar pronósticos meteorológicos se exigen
+                              al menos dos fuentes con suficientes simulaciones
+                              y cobertura. Una fuente sin cobertura en esta
+                              fecha no anula las otras.
                             </p>
                             <ul>
                               {detailDay.evidence.map((e) => (
@@ -641,11 +769,12 @@ export default function PlanningWorkspace() {
                             ))}
                           </details>
                           <p>
-                            Pronóstico descargado:{" "}
-                            {focus.sources.ensembleAt
-                              ? new Date(
-                                  focus.sources.ensembleAt,
-                                ).toLocaleString("es-AR", {
+                            {detailDay.source === "histórico"
+                              ? "Históricos actualizados"
+                              : "Pronóstico descargado"}
+                            :{" "}
+                            {sourceAt
+                              ? new Date(sourceAt).toLocaleString("es-AR", {
                                   timeZone: "America/Argentina/Buenos_Aires",
                                 })
                               : "sin datos"}
@@ -653,7 +782,11 @@ export default function PlanningWorkspace() {
                           </p>
                         </div>
                         <div>
-                          <h4>Franjas con probabilidad ≥ {threshold}%</h4>
+                          <h4>
+                            {detailDay.source === "histórico"
+                              ? "Horarios del ensayo"
+                              : `Franjas con probabilidad ≥ ${threshold}%`}
+                          </h4>
                           {detailDay.windows.filter(
                             (w) =>
                               w.supported &&
@@ -682,9 +815,9 @@ export default function PlanningWorkspace() {
                             </ul>
                           ) : (
                             <p>
-                              No hay una franja común con evidencia suficiente
-                              que supere el umbral. La probabilidad diaria puede
-                              reunir ensayos en horarios distintos.
+                              {detailDay.source === "histórico"
+                                ? "El historial permite estimar días disponibles por semana, pero no un horario para esta fecha. La franja se precisará cuando haya pronóstico."
+                                : "No hay una franja común con evidencia suficiente que supere el umbral. La probabilidad diaria puede reunir ensayos en horarios distintos."}
                             </p>
                           )}
                           {detailDay.following && (
@@ -939,10 +1072,11 @@ export default function PlanningWorkspace() {
             <section className="planning-longrange">
               <h2>Perspectiva hasta fin de campaña</h2>
               <p>
-                Fuera del horizonte de 14 días, los resultados son
-                experimentales y sirven para comparar períodos, no para fijar
-                fechas de ensayo. No tienen la misma evidencia que el pronóstico
-                de corto plazo.
+                El total suma el pronóstico disponible y, para las fechas
+                restantes, la frecuencia histórica de días aptos en cada
+                ubicación. Es una estimación de disponibilidad para planificar
+                la campaña, no un calendario de días confirmados. Se indica la
+                cobertura cuando la descarga aún está incompleta.
               </p>
               <div className="planning-table-scroll">
                 <table>
@@ -964,7 +1098,22 @@ export default function PlanningWorkspace() {
                           {group(z)} ·{" "}
                           {z.equipment.map((e) => e.name).join(" / ")}
                         </th>
-                        <td>{number(z.remaining.expectedDays)}</td>
+                        <td>
+                          {z.remaining.partialExpectedDays === null
+                            ? `Cargando históricos (${z.sources.historyYears}/10 años mínimos)`
+                            : number(
+                                z.remaining.expectedDays ??
+                                  z.remaining.partialExpectedDays,
+                              )}
+                          <small>
+                            {z.remaining.historicalDays > 0
+                              ? `${z.remaining.historicalDays} fechas con base histórica`
+                              : "Pronóstico disponible"}
+                            {z.remaining.covered < z.remaining.total
+                              ? " · estimación parcial"
+                              : " · período completo"}
+                          </small>
+                        </td>
                         <td>
                           {z.remaining.covered}/{z.remaining.total}
                         </td>
