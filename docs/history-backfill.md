@@ -13,6 +13,12 @@ evitar dos procesos descargando a la vez. Cada pasada dura como máximo 65
 minutos más la tarea en curso y la publicación final; cada lote confirmado
 queda guardado y las siguientes pasadas solicitan solamente los años faltantes.
 
+También puede iniciarse desde **Actualizar informe Climato**, eligiendo el modo
+**bootstrap** en **Run workflow**, con el límite de 30 minutos de esa acción.
+Las dos actualizaciones diarias habituales continúan la historia pendiente con
+hasta 24 tareas o 10 minutos por pasada. Los fallos de transporte de pronósticos
+no bloquean esa continuación; las pausas por cuota del proveedor sí se respetan.
+
 Las solicitudes históricas usan el mismo control de descargas de pronósticos:
 una respuesta completa por vez, separación de dos segundos y un solo reintento
 ante errores transitorios. Un HTTP 429 detiene la pasada, conserva los avances
