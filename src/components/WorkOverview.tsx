@@ -11,6 +11,14 @@ import { addDays } from "@/domain/types";
 import { reportDates } from "@/domain/opportunity-report";
 import "./work-overview.css";
 import WindyMap from "./WindyMap";
+import {
+  EstimateStats,
+  TemporalEstimate,
+  MonthlyEstimate,
+  EvidencePanel,
+  ZoneSparkline,
+  CriteriaStrip,
+} from "./WorkAnalytics";
 
 const number = (value: number) =>
   value.toLocaleString("es-AR", { maximumFractionDigits: 1 });
@@ -39,6 +47,7 @@ export default function WorkOverview({
   onDetail: (key: string, date: string) => void;
 }) {
   const [region, setRegion] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [equipmentId, setEquipmentId] = useState("");
   const [period, setPeriod] = useState("year");
   const [from, setFrom] = useState("");
@@ -109,6 +118,13 @@ export default function WorkOverview({
     metricWind: "km/h",
     metricTemp: "°C",
   });
+  const visibleEquipmentCount = new Set(
+    filtered.flatMap((z) =>
+      z.equipment
+        .filter((e) => !selectedEquipment || e.id === selectedEquipment.id)
+        .map((e) => e.id),
+    ),
+  ).size;
   const publishedAt = report?.publication?.at ?? report?.computedAt;
   const stale = report?.publication?.stale;
   return (
@@ -121,7 +137,8 @@ export default function WorkOverview({
             rel="noopener noreferrer"
             aria-label="Abrir Windy con la selección actual"
           >
-            Windy ↗
+            <span className="map-live-dot" /> METEOROLOGÍA{" "}
+            <span className="map-provider">Windy ↗</span>
           </a>
           <label>
             Capa
@@ -154,10 +171,19 @@ export default function WorkOverview({
       <section className="work-results" aria-label="Días aptos por zona">
         {navigation}
         <header className="work-heading">
-          <h1>Días aptos de trabajo</h1>
+          <div>
+            <p className="analytics-kicker">
+              PLANIFICACIÓN CLIMÁTICA{" "}
+              <span>/ {report?.start.slice(0, 4) || "—"}</span>
+            </p>
+            <h1>
+              Disponibilidad de trabajo<span className="heading-dot">.</span>
+            </h1>
+          </div>
           {publishedAt && (
             <span>
-              Actualizado{" "}
+              <i className={`publication-dot ${stale ? "stale" : ""}`} />{" "}
+              Publicado{" "}
               {new Date(publishedAt).toLocaleString("es-AR", {
                 timeZone: "America/Argentina/Buenos_Aires",
                 day: "numeric",
@@ -253,9 +279,17 @@ export default function WorkOverview({
           </p>
         )}
         {!report ? (
-          <p role="status">
-            {error ? "Sin informe disponible." : "Cargando días aptos…"}
-          </p>
+          <div className="work-loading" role="status">
+            <span className="analytics-kicker">
+              {error ? "INFORME NO DISPONIBLE" : "PREPARANDO EL INFORME"}
+            </span>
+            <p>
+              {error
+                ? "Reintentá la consulta para cargar las estimaciones."
+                : "Cargando estimaciones y respaldo meteorológico…"}
+            </p>
+            <div className="work-loading-chart" aria-hidden="true" />
+          </div>
         ) : !dates.length ? (
           <p role="status">No quedan fechas en el período elegido.</p>
         ) : !rows.length ? (
@@ -266,13 +300,32 @@ export default function WorkOverview({
               <strong>
                 {date(start)} – {date(end)}
               </strong>
-              <span>{dates.length} días</span>
+              <span>{dates.length} días en análisis · Hora de Argentina</span>
             </div>
-            <p className="work-estimate-note">
-              Promedio de días aptos estimados por ubicación, no días
-              confirmados. Los equipos de una zona comparten días; no se suman
-              sus jornadas.
-            </p>
+            <EstimateStats
+              items={filtered}
+              dates={dates}
+              count={visibleEquipmentCount}
+            />
+            <TemporalEstimate
+              items={filtered}
+              dates={dates}
+              stale={Boolean(stale)}
+              onDetail={onDetail}
+            />
+            <CriteriaStrip report={report} />
+            <div className="work-zones-heading">
+              <div>
+                <span className="analytics-kicker">
+                  DISTRIBUCIÓN TERRITORIAL
+                </span>
+                <h2>
+                  Zonas de trabajo{" "}
+                  <span>{rows.length.toString().padStart(2, "0")}</span>
+                </h2>
+              </div>
+              <span>Desplegá una zona para analizarla</span>
+            </div>
             <div className="work-zone-list">
               {rows.map(({ name, items, summary }) => {
                 const bestDates = stale
@@ -307,13 +360,39 @@ export default function WorkOverview({
                 );
                 const historical = (summary.sources["histórico"] ?? 0) > 0;
                 return (
-                  <details className="work-zone" key={name}>
+                  <details
+                    className="work-zone"
+                    key={name}
+                    open={expanded.has(name)}
+                    onToggle={(event) => {
+                      const open = event.currentTarget.open;
+                      setExpanded((current) => {
+                        if (current.has(name) === open) return current;
+                        const next = new Set(current);
+                        if (open) next.add(name);
+                        else next.delete(name);
+                        return next;
+                      });
+                    }}
+                  >
                     <summary className="work-zone-summary">
                       <div className="work-zone-title">
                         <h2>{name}</h2>
                         <span>
                           {count} {count === 1 ? "equipo" : "equipos"}
                         </span>
+                      </div>
+                      <ZoneSparkline items={items} dates={dates} />
+                      <div className="work-zone-coverage">
+                        <strong>
+                          {summary.total
+                            ? Math.round(
+                                (100 * summary.covered) / summary.total,
+                              )
+                            : 0}
+                          %
+                        </strong>
+                        <span>cobertura</span>
                       </div>
                       <div className="work-zone-number">
                         <strong>
@@ -337,143 +416,103 @@ export default function WorkOverview({
                         ⌄
                       </span>
                     </summary>
-                    <div className="work-zone-body">
-                      <MonthlyEstimate items={items} dates={dates} />
-                      <progress
-                        aria-label={`Días aptos estimados en ${name}`}
-                        value={summary.expected ?? 0}
-                        max={Math.max(1, dates.length)}
-                      />
-                      {summary.expected === null ? (
-                        <p className="work-missing">
-                          Sin datos para este período.
-                        </p>
-                      ) : (
-                        <>
-                          {!summary.complete && (
-                            <p className="work-missing">
-                              Estimación parcial: faltan datos de algunas
-                              fechas.
-                            </p>
-                          )}
-                          {historical && (
-                            <p className="work-missing">
-                              Incluye estimación histórica.
-                            </p>
-                          )}
-                        </>
-                      )}
-                      {bestDates.length > 0 && (
-                        <div className="work-best-dates">
-                          <span>Mejores fechas</span>
-                          {bestDates.map((d) => (
-                            <button
-                              key={d.date}
-                              onClick={() => onDetail(items[0].key, d.date)}
-                            >
-                              {date(d.date)}
-                            </button>
-                          ))}
+                    {expanded.has(name) && (
+                      <div className="work-zone-body">
+                        <div className="zone-analysis-grid">
+                          <TemporalEstimate
+                            items={items}
+                            dates={dates}
+                            compact
+                            stale={Boolean(stale)}
+                            onDetail={onDetail}
+                          />
+                          <MonthlyEstimate items={items} dates={dates} />
                         </div>
-                      )}
-                      <details className="work-equipment">
-                        <summary>Ver equipos</summary>
-                        <ul>
-                          {items
-                            .flatMap((z) => z.equipment)
-                            .filter(
-                              (e) =>
-                                !selectedEquipment ||
-                                e.id === selectedEquipment.id,
-                            )
-                            .map((e) => (
-                              <li key={e.id}>
-                                <button
-                                  onClick={() => {
-                                    setRegion(name);
-                                    setEquipmentId(e.id);
-                                  }}
-                                >
-                                  {e.name}
-                                  <span>{e.field}</span>
-                                  <small>Ver en Windy ↗</small>
-                                </button>
-                              </li>
+                        <EvidencePanel items={items} dates={dates} />
+                        {summary.expected === null ? (
+                          <p className="work-missing">
+                            Sin datos para este período.
+                          </p>
+                        ) : (
+                          <>
+                            {!summary.complete && (
+                              <p className="work-missing">
+                                Estimación parcial: faltan datos de algunas
+                                fechas.
+                              </p>
+                            )}
+                            {historical && (
+                              <p className="work-missing">
+                                Incluye estimación histórica.
+                              </p>
+                            )}
+                          </>
+                        )}
+                        {bestDates.length > 0 && (
+                          <div className="work-best-dates">
+                            <span>Mejores fechas</span>
+                            {bestDates.map((d) => (
+                              <button
+                                key={d.date}
+                                onClick={() => onDetail(items[0].key, d.date)}
+                              >
+                                {date(d.date)} ·{" "}
+                                {Math.round(d.cell.probability! * 100)}%
+                              </button>
                             ))}
-                        </ul>
-                      </details>
-                    </div>
+                          </div>
+                        )}
+                        <details className="work-equipment">
+                          <summary>Ver equipos</summary>
+                          <ul>
+                            {items
+                              .flatMap((z) => z.equipment)
+                              .filter(
+                                (e) =>
+                                  !selectedEquipment ||
+                                  e.id === selectedEquipment.id,
+                              )
+                              .map((e) => (
+                                <li key={e.id}>
+                                  <button
+                                    onClick={() => {
+                                      setRegion(name);
+                                      setEquipmentId(e.id);
+                                    }}
+                                  >
+                                    {e.name}
+                                    <span>{e.field}</span>
+                                    <small>Ver en Windy ↗</small>
+                                  </button>
+                                </li>
+                              ))}
+                          </ul>
+                        </details>
+                      </div>
+                    )}
                   </details>
                 );
               })}
             </div>
+            <details className="work-report-evidence">
+              <summary>
+                <span>
+                  <span className="analytics-kicker">RESPALDO DEL INFORME</span>
+                  <strong>Datos, fuentes y validación de la selección</strong>
+                </span>
+                <span aria-hidden="true">↗</span>
+              </summary>
+              <EvidencePanel items={filtered} dates={dates} />
+            </details>
+            <footer className="work-method-note">
+              <span>LECTURA DEL INFORME</span> Los decimales expresan una
+              expectativa, no fracciones de jornadas confirmadas. Las fechas
+              lejanas sirven para planificar; el pronóstico operativo se
+              consulta antes de ir al campo.
+            </footer>
           </>
         )}
       </section>
     </div>
-  );
-}
-
-function MonthlyEstimate({
-  items,
-  dates,
-}: {
-  items: PlanningZone[];
-  dates: string[];
-}) {
-  const months = new Map<string, string[]>();
-  for (const day of dates) {
-    const month = day.slice(0, 7);
-    const days = months.get(month) ?? [];
-    days.push(day);
-    months.set(month, days);
-  }
-  const rows = [...months].map(([month, days]) => ({
-    month,
-    days,
-    cell: availabilityCell(items, days),
-  }));
-  const scale = Math.max(1, ...rows.map(({ days }) => days.length));
-  return (
-    <figure className="work-monthly">
-      <figcaption>
-        Estimación mensual <span>Días aptos por ubicación</span>
-      </figcaption>
-      <ul>
-        {rows.map(({ month, days, cell }) => (
-          <li key={month}>
-            <span className="work-month-name">
-              {new Date(month + "-01T12:00Z").toLocaleDateString("es-AR", {
-                month: "short",
-                timeZone: "UTC",
-              })}
-            </span>
-            <span
-              className={`work-month-track ${cell.expected === null ? "missing" : ""}`}
-              aria-hidden="true"
-            >
-              {cell.expected !== null && (
-                <span style={{ width: `${(100 * cell.expected) / scale}%` }} />
-              )}
-            </span>
-            <span className="work-month-value">
-              {cell.expected === null
-                ? "Sin datos"
-                : `${number(cell.expected)} días`}
-              {cell.expected !== null && !cell.complete && (
-                <small>Parcial</small>
-              )}
-            </span>
-            <span className="work-month-period">
-              {date(days[0])} – {date(days.at(-1)!)}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p>
-        Solo fechas del período elegido. Las barras comparten escala; los meses
-        sin datos no se cuentan como cero.
-      </p>
-    </figure>
   );
 }
