@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { PlanningReport, PlanningZone } from "@/domain/planning-report";
 import {
   availabilityCell,
@@ -22,6 +22,7 @@ const date = (value: string) =>
   });
 
 export default function WorkOverview({
+  navigation,
   report,
   zones,
   windyEnabled = false,
@@ -29,6 +30,7 @@ export default function WorkOverview({
   onRetry,
   onDetail,
 }: {
+  navigation: ReactNode;
   windyEnabled?: boolean;
   report: PlanningReport | null;
   zones: PlanningZone[];
@@ -38,7 +40,7 @@ export default function WorkOverview({
 }) {
   const [region, setRegion] = useState("");
   const [equipmentId, setEquipmentId] = useState("");
-  const [period, setPeriod] = useState("14");
+  const [period, setPeriod] = useState("year");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [overlay, setOverlay] = useState("wind");
@@ -66,24 +68,23 @@ export default function WorkOverview({
       ? [from, report.start].sort().at(-1)!
       : report.start
     : "";
+  const yearEnd = report ? `${report.start.slice(0, 4)}-12-31` : "";
   const end = report
     ? [
-        report.deadline,
+        yearEnd,
         period === "custom"
-          ? to || report.deadline
-          : period === "campaign"
-            ? report.deadline
+          ? to || yearEnd
+          : period === "year"
+            ? yearEnd
             : addDays(start, Number(period) - 1),
       ].sort()[0]
     : "";
   const dates = start && end ? reportDates(start, end) : [];
-  const rows = availabilityGroups(filtered)
-    .map(([name, items]) => ({
-      name,
-      items,
-      summary: availabilityCell(items, dates),
-    }))
-    .sort((a, b) => (b.summary.expected ?? -1) - (a.summary.expected ?? -1));
+  const rows = availabilityGroups(filtered).map(([name, items]) => ({
+    name,
+    items,
+    summary: availabilityCell(items, dates),
+  }));
   const mapPoints = selectedEquipment ? [selectedEquipment] : filtered;
   const lat = mapPoints.length
     ? mapPoints.reduce((sum, p) => sum + p.lat, 0) / mapPoints.length
@@ -151,6 +152,7 @@ export default function WorkOverview({
         )}
       </section>
       <section className="work-results" aria-label="Días aptos por zona">
+        {navigation}
         <header className="work-heading">
           <h1>Días aptos de trabajo</h1>
           {publishedAt && (
@@ -195,7 +197,7 @@ export default function WorkOverview({
               <option value="7">Próximos 7 días</option>
               <option value="14">Próximos 14 días</option>
               <option value="30">Próximos 30 días</option>
-              <option value="campaign">Hasta fin de campaña</option>
+              <option value="year">Hasta fin de año</option>
               <option value="custom">Elegir fechas</option>
             </select>
           </label>
@@ -223,7 +225,7 @@ export default function WorkOverview({
                   type="date"
                   value={from || report?.start || ""}
                   min={report?.start}
-                  max={to || report?.deadline}
+                  max={to || yearEnd}
                   onChange={(e) => setFrom(e.target.value)}
                 />
               </label>
@@ -231,9 +233,9 @@ export default function WorkOverview({
                 Hasta
                 <input
                   type="date"
-                  value={to || report?.deadline || ""}
+                  value={to || yearEnd || ""}
                   min={from || report?.start}
-                  max={report?.deadline}
+                  max={yearEnd}
                   onChange={(e) => setTo(e.target.value)}
                 />
               </label>
@@ -267,7 +269,9 @@ export default function WorkOverview({
               <span>{dates.length} días</span>
             </div>
             <p className="work-estimate-note">
-              Estimación por ubicación. Los equipos de una zona comparten días.
+              Promedio de días aptos estimados por ubicación, no días
+              confirmados. Los equipos de una zona comparten días; no se suman
+              sus jornadas.
             </p>
             <div className="work-zone-list">
               {rows.map(({ name, items, summary }) => {
@@ -303,84 +307,103 @@ export default function WorkOverview({
                 );
                 const historical = (summary.sources["histórico"] ?? 0) > 0;
                 return (
-                  <article className="work-zone" key={name}>
-                    <div className="work-zone-title">
-                      <h2>{name}</h2>
-                      <span>
-                        {count} {count === 1 ? "equipo" : "equipos"}
-                      </span>
-                    </div>
-                    <div className="work-zone-number">
-                      <strong>
-                        {summary.expected === null
-                          ? "—"
-                          : number(summary.expected)}
-                      </strong>
-                      <span>días aptos estimados</span>
-                    </div>
-                    <progress
-                      aria-label={`Días aptos estimados en ${name}`}
-                      value={summary.expected ?? 0}
-                      max={Math.max(1, dates.length)}
-                    />
-                    {summary.expected === null ? (
-                      <p className="work-missing">
-                        Sin datos para este período.
-                      </p>
-                    ) : (
-                      <>
-                        {!summary.complete && (
-                          <p className="work-missing">
-                            Estimación parcial: faltan datos de algunas fechas.
-                          </p>
-                        )}
-                        {historical && (
-                          <p className="work-missing">
-                            Incluye estimación histórica.
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {bestDates.length > 0 && (
-                      <div className="work-best-dates">
-                        <span>Mejores fechas</span>
-                        {bestDates.map((d) => (
-                          <button
-                            key={d.date}
-                            onClick={() => onDetail(items[0].key, d.date)}
-                          >
-                            {date(d.date)}
-                          </button>
-                        ))}
+                  <details className="work-zone" key={name}>
+                    <summary className="work-zone-summary">
+                      <div className="work-zone-title">
+                        <h2>{name}</h2>
+                        <span>
+                          {count} {count === 1 ? "equipo" : "equipos"}
+                        </span>
                       </div>
-                    )}
-                    <details className="work-equipment">
-                      <summary>Ver equipos</summary>
-                      <ul>
-                        {items
-                          .flatMap((z) => z.equipment)
-                          .filter(
-                            (e) =>
-                              !selectedEquipment ||
-                              e.id === selectedEquipment.id,
-                          )
-                          .map((e) => (
-                            <li key={e.id}>
-                              <button
-                                onClick={() => {
-                                  setRegion(name);
-                                  setEquipmentId(e.id);
-                                }}
-                              >
-                                {e.name}
-                                <span>{e.field}</span>
-                                <small>Ver en Windy ↗</small>
-                              </button>
-                            </li>
+                      <div className="work-zone-number">
+                        <strong>
+                          {summary.expected === null
+                            ? "—"
+                            : number(summary.expected)}
+                        </strong>
+                        <span>días aptos estimados</span>
+                        <small>
+                          {summary.expected === null
+                            ? "Sin datos"
+                            : !summary.complete
+                              ? "Datos parciales"
+                              : ""}
+                          {historical
+                            ? `${!summary.complete ? " · " : ""}Incluye histórico`
+                            : ""}
+                        </small>
+                      </div>
+                      <span className="work-zone-toggle" aria-hidden="true">
+                        ⌄
+                      </span>
+                    </summary>
+                    <div className="work-zone-body">
+                      <MonthlyEstimate items={items} dates={dates} />
+                      <progress
+                        aria-label={`Días aptos estimados en ${name}`}
+                        value={summary.expected ?? 0}
+                        max={Math.max(1, dates.length)}
+                      />
+                      {summary.expected === null ? (
+                        <p className="work-missing">
+                          Sin datos para este período.
+                        </p>
+                      ) : (
+                        <>
+                          {!summary.complete && (
+                            <p className="work-missing">
+                              Estimación parcial: faltan datos de algunas
+                              fechas.
+                            </p>
+                          )}
+                          {historical && (
+                            <p className="work-missing">
+                              Incluye estimación histórica.
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {bestDates.length > 0 && (
+                        <div className="work-best-dates">
+                          <span>Mejores fechas</span>
+                          {bestDates.map((d) => (
+                            <button
+                              key={d.date}
+                              onClick={() => onDetail(items[0].key, d.date)}
+                            >
+                              {date(d.date)}
+                            </button>
                           ))}
-                      </ul>
-                    </details>
-                  </article>
+                        </div>
+                      )}
+                      <details className="work-equipment">
+                        <summary>Ver equipos</summary>
+                        <ul>
+                          {items
+                            .flatMap((z) => z.equipment)
+                            .filter(
+                              (e) =>
+                                !selectedEquipment ||
+                                e.id === selectedEquipment.id,
+                            )
+                            .map((e) => (
+                              <li key={e.id}>
+                                <button
+                                  onClick={() => {
+                                    setRegion(name);
+                                    setEquipmentId(e.id);
+                                  }}
+                                >
+                                  {e.name}
+                                  <span>{e.field}</span>
+                                  <small>Ver en Windy ↗</small>
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      </details>
+                    </div>
+                  </details>
                 );
               })}
             </div>
@@ -388,5 +411,69 @@ export default function WorkOverview({
         )}
       </section>
     </div>
+  );
+}
+
+function MonthlyEstimate({
+  items,
+  dates,
+}: {
+  items: PlanningZone[];
+  dates: string[];
+}) {
+  const months = new Map<string, string[]>();
+  for (const day of dates) {
+    const month = day.slice(0, 7);
+    const days = months.get(month) ?? [];
+    days.push(day);
+    months.set(month, days);
+  }
+  const rows = [...months].map(([month, days]) => ({
+    month,
+    days,
+    cell: availabilityCell(items, days),
+  }));
+  const scale = Math.max(1, ...rows.map(({ days }) => days.length));
+  return (
+    <figure className="work-monthly">
+      <figcaption>
+        Estimación mensual <span>Días aptos por ubicación</span>
+      </figcaption>
+      <ul>
+        {rows.map(({ month, days, cell }) => (
+          <li key={month}>
+            <span className="work-month-name">
+              {new Date(month + "-01T12:00Z").toLocaleDateString("es-AR", {
+                month: "short",
+                timeZone: "UTC",
+              })}
+            </span>
+            <span
+              className={`work-month-track ${cell.expected === null ? "missing" : ""}`}
+              aria-hidden="true"
+            >
+              {cell.expected !== null && (
+                <span style={{ width: `${(100 * cell.expected) / scale}%` }} />
+              )}
+            </span>
+            <span className="work-month-value">
+              {cell.expected === null
+                ? "Sin datos"
+                : `${number(cell.expected)} días`}
+              {cell.expected !== null && !cell.complete && (
+                <small>Parcial</small>
+              )}
+            </span>
+            <span className="work-month-period">
+              {date(days[0])} – {date(days.at(-1)!)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p>
+        Solo fechas del período elegido. Las barras comparten escala; los meses
+        sin datos no se cuentan como cero.
+      </p>
+    </figure>
   );
 }

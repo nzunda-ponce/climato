@@ -246,48 +246,45 @@ export default function PlanningWorkspace({
         : (current ?? []).filter((k) => !ids.includes(k)),
     );
   };
+  const navigation = (
+    <nav className="planning-tabs" aria-label="Apartados de Climato">
+      {(Object.entries(viewLabels) as [View, string][])
+        .filter(
+          ([key]) =>
+            view !== "resumen" || ["resumen", "zonas", "datos"].includes(key),
+        )
+        .map(([key, label]) => (
+          <a
+            key={key}
+            href={
+              key === "ciencia"
+                ? "/ciencia-de-datos"
+                : initialView === "ciencia"
+                  ? `/#${key}`
+                  : `#${key}`
+            }
+            aria-current={view === key ? "page" : undefined}
+            onClick={() => setView(key)}
+          >
+            {view === "resumen"
+              ? (
+                  {
+                    resumen: "Inicio",
+                    zonas: "Equipos",
+                    datos: "Datos y criterios",
+                  } as Partial<Record<View, string>>
+                )[key]
+              : label}
+          </a>
+        ))}
+    </nav>
+  );
   return (
     <div className={`planning-app ${view === "resumen" ? "work-home" : ""}`}>
       <a className="planning-skip" href="#main-content">
         Saltar al contenido
       </a>
-      <header className="planning-header">
-        <a href="/" className="planning-brand">
-          climato
-        </a>
-        <nav aria-label="Apartados de Climato">
-          {(Object.entries(viewLabels) as [View, string][])
-            .filter(
-              ([key]) =>
-                view !== "resumen" ||
-                ["resumen", "zonas", "datos"].includes(key),
-            )
-            .map(([key, label]) => (
-              <a
-                key={key}
-                href={
-                  key === "ciencia"
-                    ? "/ciencia-de-datos"
-                    : initialView === "ciencia"
-                      ? `/#${key}`
-                      : `#${key}`
-                }
-                aria-current={view === key ? "page" : undefined}
-                onClick={() => setView(key)}
-              >
-                {view === "resumen"
-                  ? (
-                      {
-                        resumen: "Inicio",
-                        zonas: "Equipos",
-                        datos: "Datos y criterios",
-                      } as Partial<Record<View, string>>
-                    )[key]
-                  : label}
-              </a>
-            ))}
-        </nav>
-      </header>
+      {view !== "resumen" && navigation}
       <main className="planning-main" id="main-content" tabIndex={-1}>
         {view !== "resumen" && (
           <section className="planning-intro">
@@ -562,6 +559,7 @@ export default function PlanningWorkspace({
             )}
             {view === "resumen" && (
               <WorkOverview
+                navigation={navigation}
                 windyEnabled={windyEnabled}
                 report={report}
                 zones={report?.zones ?? []}
