@@ -3,6 +3,7 @@ import { assessHistoryYear } from "@/domain/history-training";
 import { Rules, Hour } from "@/domain/types";
 import { readLongCache, writeLongCache } from "./long-range";
 import type { EnsemblePoint } from "./research";
+import { weatherJson } from "./weather-request";
 type Raw = {
   hourly: {
     time: string[];
@@ -15,7 +16,7 @@ export async function loadHistoryYearBatch(
   points: EnsemblePoint[],
   year: number,
   rules: Rules,
-  request: typeof fetch = fetch,
+  request?: typeof fetch,
   cache: {
     read: (name: string) => Promise<Raw | undefined>;
     write: (name: string, value: Raw) => Promise<void>;
@@ -45,13 +46,7 @@ export async function loadHistoryYearBatch(
     if (process.env.WEATHER_API_KEY)
       params.apikey = process.env.WEATHER_API_KEY;
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    const response = await request(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(45000),
-    });
-    if (!response.ok)
-      throw new Error(`Históricos ERA5 ${year}: HTTP ${response.status}`);
-    const payload = await response.json(),
+    const payload = await weatherJson<Raw | Raw[]>(url, request),
       rows: Raw[] = Array.isArray(payload) ? payload : [payload];
     if (
       rows.length !== missing.length ||

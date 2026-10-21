@@ -1,0 +1,30 @@
+name: Completar históricos ERA5
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/history-backfill.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: climato-data-worker
+  cancel-in-progress: false
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.CLIMATO_DATABASE_URL }}
+      WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+      CLIMATO_ROLE: worker
+      CLIMATO_JOB_MAX_MINUTES: "65"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Completar años faltantes y publicar la estimación
+        run: npm run data:bootstrap
