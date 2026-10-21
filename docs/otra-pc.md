@@ -36,7 +36,7 @@ Abrir http://127.0.0.1:3000. Mantener esa terminal abierta mientras se desarroll
 
 La campaña, los históricos y los informes ya están en Neon. Esta instalación consulta la misma publicación que Vercel. No ejecutar `db:setup`, `db:migrate`, restauraciones ni una nueva importación para retomar el proyecto.
 
-GitHub Actions actualiza los datos dos veces por día, a las 07:17 y 19:17 de Argentina, y publica el informe. Revisar su estado en [Actions](https://github.com/nzunda-ponce/climato/actions/workflows/data-worker.yml). El workflow conserva como referencia de ejecución la rama `codex/automatic-data-import`; mantenerla sincronizada cuando se cambie el procesamiento de datos. Las credenciales de Actions y Vercel ya están configuradas y no se trasladan en archivos del repositorio.
+GitHub Actions actualiza los datos dos veces por día, a las 07:17 y 19:17 de Argentina, y publica el informe. Revisar su estado en [Actions](https://github.com/nzunda-ponce/climato/actions/workflows/data-worker.yml). El workflow ejecuta la revisión que lo dispara; las ejecuciones programadas usan `main`. Las credenciales de Actions y Vercel ya están configuradas y no se trasladan en archivos del repositorio.
 
 Para continuar con un asistente, abrir esta carpeta y pedirle que lea este documento y [la descripción del modelo](science-model.md). Las zonas se obtienen de la segunda letra del nombre del equipo; por ejemplo, `BE1187` pertenece a la zona E.
 

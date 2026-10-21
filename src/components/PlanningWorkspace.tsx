@@ -9,7 +9,7 @@ import {
   locationDayEstimate,
   missingForecastLabel,
 } from "@/domain/planning-summary";
-import AvailabilityOverview from "./AvailabilityOverview";
+import WorkOverview from "./WorkOverview";
 import DataScienceView from "./DataScienceView";
 import {
   availabilityRegion,
@@ -80,21 +80,8 @@ export default function PlanningWorkspace({
   const [selected, setSelected] = useState<string[] | null>(null),
     [search, setSearch] = useState("");
   const [undoSelection, setUndoSelection] = useState<string[] | null>(null);
-  const [overviewMode, setOverviewMode] = useState<"days" | "weeks">("days");
   const [showWholeZone, setShowWholeZone] = useState(false);
   const detailRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("climato-overview-mode") === "weeks")
-        setOverviewMode("weeks");
-    } catch {}
-  }, []);
-  const changeOverviewMode = (mode: "days" | "weeks") => {
-    setOverviewMode(mode);
-    try {
-      sessionStorage.setItem("climato-overview-mode", mode);
-    } catch {}
-  };
   const [horizon, setHorizon] = useState<7 | 14>(7),
     [threshold, setThreshold] = useState(70),
     [lead, setLead] = useState(1);
@@ -258,17 +245,22 @@ export default function PlanningWorkspace({
     );
   };
   return (
-    <div className="planning-app">
+    <div className={`planning-app ${view === "resumen" ? "work-home" : ""}`}>
       <a className="planning-skip" href="#main-content">
         Saltar al contenido
       </a>
       <header className="planning-header">
         <a href="/" className="planning-brand">
-          climato<span>Planificación de uniformidades</span>
+          climato
         </a>
         <nav aria-label="Apartados de Climato">
-          {(Object.entries(viewLabels) as [View, string][]).map(
-            ([key, label]) => (
+          {(Object.entries(viewLabels) as [View, string][])
+            .filter(
+              ([key]) =>
+                view !== "resumen" ||
+                ["resumen", "zonas", "datos"].includes(key),
+            )
+            .map(([key, label]) => (
               <a
                 key={key}
                 href={
@@ -281,66 +273,66 @@ export default function PlanningWorkspace({
                 aria-current={view === key ? "page" : undefined}
                 onClick={() => setView(key)}
               >
-                {label}
+                {view === "resumen"
+                  ? (
+                      {
+                        resumen: "Inicio",
+                        zonas: "Equipos",
+                        datos: "Datos y criterios",
+                      } as Partial<Record<View, string>>
+                    )[key]
+                  : label}
               </a>
-            ),
-          )}
+            ))}
         </nav>
       </header>
       <main className="planning-main" id="main-content" tabIndex={-1}>
-        <section className="planning-intro">
-          <div>
-            <p className="planning-eyebrow">
-              INFORME DE DISPONIBILIDAD CLIMÁTICA
-            </p>
-            <h1>
-              {view === "resumen"
-                ? "Disponibilidad para trabajar"
-                : viewLabels[view]}
-            </h1>
-            <p>
-              {view === "resumen"
-                ? "Días disponibles estimados en las ubicaciones de tus equipos."
-                : "La selección de zonas se aplica a todos los apartados."}
-            </p>
-          </div>
-          <div className="planning-updated">
-            Informe publicado
-            <br />
-            <strong>
-              {report
-                ? new Date(
-                    report.publication?.at ?? report.computedAt,
-                  ).toLocaleString("es-AR", {
+        {view !== "resumen" && (
+          <section className="planning-intro">
+            <div>
+              <p className="planning-eyebrow">
+                INFORME DE DISPONIBILIDAD CLIMÁTICA
+              </p>
+              <h1>{viewLabels[view]}</h1>
+            </div>
+            <div className="planning-updated">
+              Informe publicado
+              <br />
+              <strong>
+                {report
+                  ? new Date(
+                      report.publication?.at ?? report.computedAt,
+                    ).toLocaleString("es-AR", {
+                      timeZone: "America/Argentina/Buenos_Aires",
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })
+                  : error
+                    ? "Sin publicación disponible"
+                    : "Cargando…"}
+              </strong>
+              <span>Hora de Argentina</span>
+              {weatherDates.length > 0 && (
+                <span className="planning-data-age">
+                  Pronósticos descargados:{" "}
+                  {new Date(weatherDates[0]).toLocaleString("es-AR", {
                     timeZone: "America/Argentina/Buenos_Aires",
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })
-                : error
-                  ? "Sin publicación disponible"
-                  : "Cargando…"}
-            </strong>
-            <span>Hora de Argentina</span>
-            {weatherDates.length > 0 && (
-              <span className="planning-data-age">
-                Pronósticos descargados:{" "}
-                {new Date(weatherDates[0]).toLocaleString("es-AR", {
-                  timeZone: "America/Argentina/Buenos_Aires",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                {weatherDates[0] !== weatherDates.at(-1)
-                  ? `–${new Date(weatherDates.at(-1)!).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}`
-                  : ""}
-              </span>
-            )}
-            <span>Actualizaciones previstas: 07:17 y 19:17 · Argentina</span>
-            {view === "datos" && <StorageStatus />}
-          </div>
-        </section>
-        {error && (view !== "resumen" || report) && (
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {weatherDates[0] !== weatherDates.at(-1)
+                    ? `–${new Date(weatherDates.at(-1)!).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}`
+                    : ""}
+                </span>
+              )}
+              <span>Actualizaciones previstas: 07:17 y 19:17 · Argentina</span>
+              {view === "datos" && <StorageStatus />}
+            </div>
+          </section>
+        )}
+        {error && view !== "resumen" && (
           <div className="planning-alert" role="alert">
             {error}{" "}
             <button
@@ -350,7 +342,7 @@ export default function PlanningWorkspace({
             </button>
           </div>
         )}
-        {report?.publication?.stale && (
+        {view !== "resumen" && report?.publication?.stale && (
           <div className="planning-alert" role="alert">
             Este informe corresponde al{" "}
             {new Date(report.computedAt).toLocaleDateString("es-AR", {
@@ -360,7 +352,7 @@ export default function PlanningWorkspace({
             tomarse como un pronóstico vigente.
           </div>
         )}
-        {report?.publication?.pendingChanges && (
+        {view !== "resumen" && report?.publication?.pendingChanges && (
           <div className="planning-alert" role="status">
             Hay datos nuevos pendientes de publicar. Se muestra el último
             informe completo.
@@ -567,15 +559,15 @@ export default function PlanningWorkspace({
               <DataScienceView report={report} zones={zones} />
             )}
             {view === "resumen" && (
-              <AvailabilityOverview
+              <WorkOverview
                 report={report}
-                zones={zones}
-                onZones={() => navigate("zonas")}
-                mode={overviewMode}
-                onMode={changeOverviewMode}
+                zones={report?.zones ?? []}
                 error={error}
                 onRetry={() => void load().catch((e) => setError(e.message))}
                 onDetail={(key, date) => {
+                  setSelected((current) => [
+                    ...new Set([...(current ?? []), key]),
+                  ]);
                   setFocused(key);
                   setSelectedDate(date);
                   setShowWholeZone(false);
@@ -1399,7 +1391,7 @@ export default function PlanningWorkspace({
                 </div>
               </section>
             )}
-            {report?.publication?.stale && (
+            {view !== "resumen" && report?.publication?.stale && (
               <div className="planning-alert" role="alert">
                 Este informe corresponde al{" "}
                 {new Date(report.computedAt).toLocaleDateString("es-AR", {
@@ -1409,7 +1401,7 @@ export default function PlanningWorkspace({
                 deben tomarse como un pronóstico vigente.
               </div>
             )}
-            {report?.publication?.pendingChanges && (
+            {view !== "resumen" && report?.publication?.pendingChanges && (
               <div className="planning-alert" role="status">
                 Hay datos nuevos pendientes de publicar. Se muestra el último
                 informe completo.
@@ -1467,20 +1459,22 @@ export default function PlanningWorkspace({
           </div>
         </div>
       </main>
-      <footer className="planning-footer">
-        Climato · Informe de planificación de uniformidades ·{" "}
-        <a
-          href="https://www.windy.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Windy
-        </a>{" "}
-        · Meteorología: Open-Meteo / pronósticos y ERA5.{" "}
-        {report?.publication?.readOnly
-          ? "Informe de consulta: los datos se preparan en un proceso independiente."
-          : "Actualización local: mantener el proceso de datos en ejecución."}
-      </footer>
+      {view !== "resumen" && (
+        <footer className="planning-footer">
+          Climato · Informe de planificación de uniformidades ·{" "}
+          <a
+            href="https://www.windy.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Windy
+          </a>{" "}
+          · Meteorología: Open-Meteo / pronósticos y ERA5.{" "}
+          {report?.publication?.readOnly
+            ? "Informe de consulta: los datos se preparan en un proceso independiente."
+            : "Actualización local: mantener el proceso de datos en ejecución."}
+        </footer>
+      )}
     </div>
   );
 }

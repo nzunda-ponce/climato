@@ -1,3 +1,4 @@
+import { weatherJson } from "./weather-request";
 import { WeatherForecast, ModelForecast } from "@/domain/types";
 export interface WeatherProvider {
   forecast(lat: number, lon: number): Promise<WeatherForecast>;
@@ -37,12 +38,10 @@ export class OpenMeteoProvider implements WeatherProvider {
         if (process.env.WEATHER_API_KEY)
           params.apikey = process.env.WEATHER_API_KEY;
         Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-        const response = await fetch(url, {
-          signal: AbortSignal.timeout(25000),
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error(`${model}: HTTP ${response.status}`);
-        const payload = await response.json();
+        type Location = {
+          hourly: { time: string[]; [key: string]: unknown[] };
+        };
+        const payload = await weatherJson<Location | Location[]>(url);
         const data = Array.isArray(payload) ? payload : [payload];
         if (data.length !== points.length || data.some((d) => !d.hourly?.time))
           throw new Error(`${model}: respuesta sin datos horarios completos`);

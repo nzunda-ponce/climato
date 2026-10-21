@@ -1,3 +1,4 @@
+import { weatherJson } from "./weather-request";
 import {
   EnsembleAssessment,
   HistoricalClimate,
@@ -189,12 +190,9 @@ export async function fetchEnsembleBatch(
       if (process.env.WEATHER_API_KEY)
         params.apikey = process.env.WEATHER_API_KEY;
       Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-      const response = await request(url, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(25000),
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
+      const payload = await weatherJson<
+        { hourly?: RawHourly } | { hourly?: RawHourly }[]
+      >(url, request);
       const rows = Array.isArray(payload) ? payload : [payload];
       if (rows.length !== points.length)
         throw new Error("Respuesta con ubicaciones incompletas");
