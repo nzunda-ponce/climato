@@ -1,8 +1,15 @@
 name: Actualizar informe Climato
 on:
   push:
-    branches: [codex/automatic-data-import]
-    paths: ['src/domain/**', 'scripts/data-worker.ts']
+    branches: [main]
+    paths:
+      [
+        "src/domain/**",
+        "src/providers/**",
+        "src/jobs/**",
+        "scripts/data-worker.ts",
+        ".github/workflows/data-worker.yml",
+      ]
   workflow_dispatch:
     inputs:
       mode:
@@ -12,7 +19,7 @@ on:
         default: refresh
   schedule:
     # Argentina (UTC-3): 07:17 and 19:17; refresh resumes small history batches.
-    - cron: '17 10,22 * * *'
+    - cron: "17 10,22 * * *"
 permissions:
   contents: read
 concurrency:
@@ -26,15 +33,12 @@ jobs:
       DATABASE_URL: ${{ secrets.CLIMATO_DATABASE_URL }}
       WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
       CLIMATO_ROLE: worker
-      CLIMATO_JOB_MAX_MINUTES: '30'
+      CLIMATO_JOB_MAX_MINUTES: "30"
     steps:
       - uses: actions/checkout@v4
-        with:
-          # This repository's deployed application lives on this release branch.
-          ref: codex/automatic-data-import
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run db:generate

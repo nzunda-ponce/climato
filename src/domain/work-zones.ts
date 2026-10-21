@@ -38,7 +38,7 @@ export function splitWorkZones<
         (equipmentZone(e.name)
           ? `Zona ${equipmentZone(e.name)}`
           : "Sin zona identificable") === name,
-    );
+    ) as T["equipment"];
     return {
       ...z,
       key: names.length > 1 ? `${z.locationKey ?? z.key}::${name}` : z.key,
