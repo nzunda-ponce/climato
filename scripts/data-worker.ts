@@ -46,17 +46,29 @@ async function main() {
       }
       // Complete additional historical samples inside the existing twice-daily
       // invocations, after current forecasts. Never start another cron or page job.
-      if (!operationalSync.status.errors.length) {
+      if (
+        ![
+          ...operationalSync.status.errors,
+          ...verificationSync.status.errors,
+        ].some((message) => /HTTP 429/.test(message))
+      ) {
         const budget = Math.max(
           0,
           Math.min(
-            6,
-            Number(process.env.CLIMATO_HISTORY_TASKS_PER_REFRESH ?? 6) || 0,
+            24,
+            Number(process.env.CLIMATO_HISTORY_TASKS_PER_REFRESH ?? 24) || 0,
           ),
         );
         if (budget) {
           const previousBudget = process.env.CLIMATO_JOB_MAX_TASKS;
+          const previousMinutes = process.env.CLIMATO_JOB_MAX_MINUTES;
           process.env.CLIMATO_JOB_MAX_TASKS = String(budget);
+          // Give history its own bounded lane after operational downloads.
+          // Transport failures above must not indefinitely starve old seasons;
+          // createDataRunner still honors the persistent provider quota pause.
+          process.env.CLIMATO_JOB_MAX_MINUTES = String(
+            Math.min(10, Number(previousMinutes) || 10),
+          );
           try {
             const { autoSync } = await import("../src/providers/auto-sync");
             await autoSync.start();
@@ -72,6 +84,9 @@ async function main() {
             if (previousBudget === undefined)
               delete process.env.CLIMATO_JOB_MAX_TASKS;
             else process.env.CLIMATO_JOB_MAX_TASKS = previousBudget;
+            if (previousMinutes === undefined)
+              delete process.env.CLIMATO_JOB_MAX_MINUTES;
+            else process.env.CLIMATO_JOB_MAX_MINUTES = previousMinutes;
           }
         }
       }
