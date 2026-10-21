@@ -36,6 +36,9 @@ export default function HistoricalYearsChart({
   const [showData, setShowData] = useState(false);
   const activeIndex = Math.min(cursor, Math.max(0, data.weeks.length - 1));
   const week = data.weeks[activeIndex];
+  const hasML = items.some(
+    (item) => item.machineLearning?.status === "trained",
+  );
   const highlighted = data.curves.find(
     (curve) => String(curve.year) === selectedYear,
   );
@@ -75,7 +78,7 @@ export default function HistoricalYearsChart({
       <div className="analytics-panel-heading">
         <div>
           <span className="analytics-kicker">
-            AÑOS QUE RESPALDAN LA REFERENCIA
+            HISTÓRICOS DE REFERENCIA Y EVALUACIÓN
           </span>
           <h2>La misma semana, año por año</h2>
         </div>
@@ -134,7 +137,7 @@ export default function HistoricalYearsChart({
                 <strong>
                   {percent(data.reference[activeIndex]?.probability)}
                 </strong>
-                <small>Referencia semanal del modelo</small>
+                <small>Referencia histórica semanal</small>
               </span>
             )}
             <span>
@@ -151,7 +154,7 @@ export default function HistoricalYearsChart({
             className="historical-years-chart"
             viewBox="0 0 720 211"
             role="img"
-            aria-label={`${data.curves.length} curvas históricas semanales, una por año. La línea oscura es la referencia histórica del modelo y la verde la estimación actual. Consultá los datos con el selector inferior.`}
+            aria-label={`${data.curves.length} curvas históricas semanales, una por año. La línea oscura es la referencia histórica semanal y la verde la estimación actual. Consultá los datos con el selector inferior.`}
             onPointerMove={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               const point = ((event.clientX - rect.left) / rect.width) * 720;
@@ -310,7 +313,7 @@ export default function HistoricalYearsChart({
             </span>
             <span>
               <i className="historical-reference" />
-              Referencia semanal del modelo
+              Referencia histórica semanal
             </span>
             <span>
               <i style={{ background: "#087f77" }} />
@@ -351,6 +354,14 @@ export default function HistoricalYearsChart({
               {showData ? "Ocultar años" : "Ver datos por año"} ↗
             </button>
           </div>
+          {hasML && (
+            <p className="analytics-footnote historical-method-note">
+              Se incluyen los años de entrenamiento, selección, calibración y
+              prueba del modelo ML, identificados en el panel de validación. La
+              línea histórica discontinua conserva la referencia semanal para
+              comparar; la verde muestra la estimación actual.
+            </p>
+          )}
           <p className="analytics-footnote historical-method-note">
             La referencia combina las ubicaciones y las ventanas de años
             elegidas por el modelo; puede incluir suavizado. Las curvas de cada

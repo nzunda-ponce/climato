@@ -1,4 +1,8 @@
 import {
+  machineLearningSummary,
+  compatibleMachineLearning,
+} from "./machine-learning";
+import {
   buildOpportunityReport,
   ReportState,
   isFresh,
@@ -28,7 +32,10 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
         const seasonal = state.seasonal?.[zone.key];
         const seasonalValid =
           seasonal?.rulesSignature === signature &&
-          isFresh(seasonal.fetchedAt, now.getTime(), 36);
+          isFresh(seasonal.fetchedAt, now.getTime(), 36) &&
+          (!seasonal.mlFingerprint ||
+            compatibleMachineLearning(history)?.fingerprint ===
+              seasonal.mlFingerprint);
         const outlook = reportDates(report.start, report.deadline).map(
           (date) => {
             const evidence = valid ? dayEvidence(e, date) : null;
@@ -141,6 +148,10 @@ export function buildPlanningReport(state: ReportState, now = new Date()) {
             state.climate?.[zone.key]?.rulesSignature === signature
               ? (state.climate[zone.key].validation ?? null)
               : null,
+          machineLearning: machineLearningSummary(
+            history?.rulesSignature === signature ? history : undefined,
+            seasonal?.mlFingerprint,
+          ),
           science:
             history?.rulesSignature === signature
               ? historicalDiagnostics(

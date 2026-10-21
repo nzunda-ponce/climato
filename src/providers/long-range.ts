@@ -1,3 +1,7 @@
+import {
+  mlWeatherProbability,
+  compatibleMachineLearning,
+} from "@/domain/machine-learning";
 import { readCache, writeCache } from "@/persistence/store";
 import { addDays, Hour, localDate, Rules } from "@/domain/types";
 import { dailyRainTotal } from "@/domain/weather-rules";
@@ -253,6 +257,10 @@ export async function loadSeasonal(
     history.rulesSignature === rulesSignature(r)
       ? analogueModel(history.features)
       : undefined;
+  const trained =
+    history?.rulesSignature === rulesSignature(r)
+      ? compatibleMachineLearning(history)
+      : null;
   const indices = new Map<string, number[]>();
   hourly.time.forEach((t, i) => {
     const d = t.slice(0, 10);
@@ -296,7 +304,35 @@ export async function loadSeasonal(
         prediction =
           previousRain >= r.rain24Limit
             ? { probability: 0, slots: 0 }
-            : model?.(date.slice(5, 7), wind, rain, previousRain);
+            : (mlWeatherProbability(
+                trained ? history : undefined,
+                date,
+                { wind, rain, previousRain },
+                (pastDate) => {
+                  const pastIndices = indices.get(pastDate);
+                  if (!pastIndices || pastIndices.length !== 4)
+                    return undefined;
+                  const pastWind = pastIndices
+                    .filter(
+                      (i) =>
+                        Number(hourly.time[i].slice(11, 13)) >= r.startHour &&
+                        Number(hourly.time[i].slice(11, 13)) < r.endHour,
+                    )
+                    .map((i) => number(hourly[k]?.[i]));
+                  const pastRain = pastIndices.map((i) =>
+                    number(hourly[`precipitation${suffix}`]?.[i + 1]),
+                  );
+                  return {
+                    wind:
+                      pastWind.length && pastWind.every((v) => v !== null)
+                        ? Math.max(...(pastWind as number[]))
+                        : null,
+                    rain: pastRain.every((v) => v !== null)
+                      ? (pastRain as number[]).reduce((sum, v) => sum + v, 0)
+                      : null,
+                  };
+                },
+              ) ?? model?.(date.slice(5, 7), wind, rain, previousRain));
       if (prediction) samples.push({ ...prediction, wind, rain });
     }
     const source = indicesForDay.some(
@@ -329,11 +365,16 @@ export async function loadSeasonal(
     rulesSignature: rulesSignature(r),
     days,
     years: history?.years ?? [],
-    method:
-      "EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; horas continuas con viento apto y lluvia limitada al ensayo, más lluvia del día anterior. La lluvia diaria pronosticada informa los análogos y no descarta por sí sola el día. Experimental, sin calibración contra hindcasts.",
-    errors: model
-      ? []
-      : ["Faltan al menos 30 años de datos compatibles para estimar ventanas."],
+    mlFingerprint: trained?.weather.accepted ? trained.fingerprint : undefined,
+    method: trained?.weather.accepted
+      ? `EC46/SEAS5 + ${trained.version} [${trained.fingerprint.slice(0, 12)}] calibrado por miembro. Validación interna ERA5; sin evaluación contra hindcasts estacionales.`
+      : "EC46/SEAS5 + 60 análogos ERA5 por miembro y mes; horas continuas con viento apto y lluvia limitada al ensayo, más lluvia del día anterior. La lluvia diaria pronosticada informa los análogos y no descarta por sí sola el día. Experimental, sin calibración contra hindcasts.",
+    errors:
+      model || trained?.weather.accepted
+        ? []
+        : [
+            "Faltan al menos 30 años de datos compatibles para estimar ventanas.",
+          ],
   };
 }
 export function gridCoordinates(bounds: ForecastGrid["bounds"], step = 1) {

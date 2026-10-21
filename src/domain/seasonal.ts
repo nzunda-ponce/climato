@@ -39,6 +39,7 @@ export interface SeasonalAssessment {
   days: Record<string, SeasonalDay>;
   years: number[];
   method: string;
+  mlFingerprint?: string;
   errors: string[];
 }
 export interface EnsoIndex {

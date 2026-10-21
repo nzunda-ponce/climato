@@ -12,6 +12,7 @@ import { reportDates } from "@/domain/opportunity-report";
 import "./work-overview.css";
 import WindyMap from "./WindyMap";
 import HistoricalYearsChart from "./HistoricalYearsChart";
+import MachineLearningPanel from "./MachineLearningPanel";
 import {
   EstimateStats,
   TemporalEstimate,
@@ -418,6 +419,7 @@ export default function WorkOverview({
                     </summary>
                     {expanded.has(name) && (
                       <div className="work-zone-body">
+                        <MachineLearningPanel items={items} />
                         <HistoricalYearsChart items={items} dates={dates} />
                         {summary.expected === null ? (
                           <p className="work-missing">

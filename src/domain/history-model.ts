@@ -6,6 +6,10 @@ import {
   historicalWeekSample,
 } from "./history-weeks";
 import { addDays } from "./types";
+import {
+  mlCalendarProbability,
+  compatibleMachineLearning,
+} from "./machine-learning";
 
 export type HistoryCandidate = {
   window: number;
@@ -248,6 +252,8 @@ export function historicalProbability(
   history: HistoricalClimate,
   date: string,
 ) {
+  const learned = mlCalendarProbability(history, date);
+  if (learned) return learned;
   const model = historicalModel(history, Number(date.slice(0, 4)));
   return model.weeklyForecast[historicalWeek(date).start] ?? null;
 }
@@ -273,6 +279,10 @@ export function historicalDiagnostics(
   const before = Number(dates[0].slice(0, 4)),
     fitted = historicalModel(history, before),
     data = dataset(history, before);
+  const artifact = compatibleMachineLearning(history);
+  const curveYears = artifact
+    ? [...new Set(Object.values(artifact.splits).flat())].sort((a, b) => a - b)
+    : fitted.trainingYears;
   const md = dates.map((d) => d.slice(4));
   const sample = (year: number) => {
     const values = md.map((d) => data.rows.get(year)?.[d]);
@@ -316,7 +326,7 @@ export function historicalDiagnostics(
       dates: Object.keys(fitted.weeklyForecast).flatMap(
         (date) => historicalWeek(date).dates,
       ),
-      years: fitted.trainingYears.map((year) => ({
+      years: curveYears.map((year) => ({
         year,
         // Compact binary ERA5 labels preserve partial-week filtering without
         // exposing hourly training payloads. Unknown dates stay explicit.

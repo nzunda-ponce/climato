@@ -1,3 +1,4 @@
+import type { ClimateMachineLearning } from "./boosted-model";
 import {
   addDays,
   Hour,
@@ -81,6 +82,7 @@ export interface HistoricalClimate {
   days: Record<string, number | null>;
   monthly: Record<string, { days: number; operable: number; fraction: number }>;
   source: string;
+  machineLearning?: ClimateMachineLearning;
   features?: {
     date: string;
     wind: number;
