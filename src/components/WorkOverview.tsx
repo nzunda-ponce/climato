@@ -11,10 +11,10 @@ import { addDays } from "@/domain/types";
 import { reportDates } from "@/domain/opportunity-report";
 import "./work-overview.css";
 import WindyMap from "./WindyMap";
+import HistoricalYearsChart from "./HistoricalYearsChart";
 import {
   EstimateStats,
   TemporalEstimate,
-  MonthlyEstimate,
   EvidencePanel,
   ZoneSparkline,
   CriteriaStrip,
@@ -418,17 +418,7 @@ export default function WorkOverview({
                     </summary>
                     {expanded.has(name) && (
                       <div className="work-zone-body">
-                        <div className="zone-analysis-grid">
-                          <TemporalEstimate
-                            items={items}
-                            dates={dates}
-                            compact
-                            stale={Boolean(stale)}
-                            onDetail={onDetail}
-                          />
-                          <MonthlyEstimate items={items} dates={dates} />
-                        </div>
-                        <EvidencePanel items={items} dates={dates} />
+                        <HistoricalYearsChart items={items} dates={dates} />
                         {summary.expected === null ? (
                           <p className="work-missing">
                             Sin datos para este período.

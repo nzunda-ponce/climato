@@ -378,7 +378,7 @@ export default function DataScienceView({
                     </td>
                     <td>
                       {z.science
-                        ? `${z.science.model.method === "monthly" ? "Referencia mensual" : `${z.science.model.window} años · ${z.science.model.prior ? "suavizado" : "frecuencia directa"}`} · ${z.science.selected ? "elegido en prueba previa" : "base sin selección validada"}`
+                        ? `${z.science.model.method === "weekly" ? `Referencia semanal · ${z.science.model.window} años` : z.science.model.method === "monthly" ? "Referencia mensual" : `${z.science.model.window} años · ${z.science.model.prior ? "suavizado" : "frecuencia directa"}`} · ${z.science.selected ? "elegido en prueba previa" : "base sin selección validada"}`
                         : "La próxima publicación calculará el diagnóstico"}
                     </td>
                     <td>

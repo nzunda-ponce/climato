@@ -1,10 +1,16 @@
 import type { HistoricalClimate } from "./evidence";
 import { createHash } from "node:crypto";
+import {
+  historicalWeek,
+  historicalWeeks,
+  historicalWeekSample,
+} from "./history-weeks";
+import { addDays } from "./types";
 
 export type HistoryCandidate = {
   window: number;
   prior: number;
-  method?: "monthly";
+  method?: "monthly" | "weekly";
 };
 type Scores = {
   count: number;
@@ -42,36 +48,41 @@ function dataset(history: HistoricalClimate, before: number) {
     rows,
   };
 }
+function weeklyPrediction(
+  rows: Map<number, Record<string, number>>,
+  years: number[],
+  date: string,
+  model: HistoryCandidate,
+) {
+  const week = historicalWeek(date);
+  const samples = years.slice(-model.window).flatMap((year) => {
+    const values = week.dates.map((day) => rows.get(year)?.[day.slice(4)]);
+    const sample = historicalWeekSample(values);
+    return sample ? [sample] : [];
+  });
+  if (samples.length < 10) return null;
+  return {
+    probability:
+      (samples.reduce((sum, sample) => sum + sample.probability, 0) +
+        model.prior) /
+      (samples.length + 2 * model.prior),
+    slots: mean(samples.map((sample) => sample.slots))!,
+    years: samples.length,
+    start: week.start,
+    end: week.end,
+  };
+}
 function prediction(
   rows: Map<number, Record<string, number>>,
   years: number[],
   monthDay: string,
   model: HistoryCandidate,
+  targetYear: number,
 ) {
-  if (model.method === "monthly") {
-    const available = years
-      .slice(-model.window)
-      .filter((y) =>
-        Object.keys(rows.get(y) ?? {}).some(
-          (md) => md.slice(0, 3) === monthDay.slice(0, 3),
-        ),
-      );
-    if (available.length < 10) return null;
-    const values = available.flatMap((y) =>
-      Object.entries(rows.get(y) ?? {})
-        .filter(([md]) => md.slice(0, 3) === monthDay.slice(0, 3))
-        .map(([, value]) => (value > 0 ? 1 : 0)),
-    );
-    return mean(values);
-  }
-  const values = years
-    .slice(-model.window)
-    .map((y) => rows.get(y)?.[monthDay])
-    .filter(valid);
-  return values.length >= 10
-    ? (values.filter((v) => v > 0).length + model.prior) /
-        (values.length + 2 * model.prior)
-    : null;
+  return (
+    weeklyPrediction(rows, years, `${targetYear}${monthDay}`, model)
+      ?.probability ?? null
+  );
 }
 function score(
   data: ReturnType<typeof dataset>,
@@ -92,6 +103,7 @@ function score(
         values.push(value > 0 ? 1 : 0);
         months.set(month, values);
       }
+    const weekPredictions = new Map<string, number | null>();
     for (const [md, value] of Object.entries(data.rows.get(year) ?? {})) {
       // Compare every candidate on the same observed dates, including dates
       // where the smallest (ten-year) training window is complete.
@@ -100,11 +112,14 @@ function score(
         !train.slice(-10).every((y) => valid(data.rows.get(y)?.[md]))
       )
         continue;
-      const base = mean(months.get(md.slice(0, 3)) ?? []),
-        p =
-          model.method === "monthly"
-            ? base
-            : prediction(data.rows, train, md, model);
+      const base = mean(months.get(md.slice(0, 3)) ?? []);
+      const week = historicalWeek(`${year}${md}`).start;
+      if (!weekPredictions.has(week))
+        weekPredictions.set(
+          week,
+          prediction(data.rows, train, md, model, year),
+        );
+      const p = weekPredictions.get(week) ?? null;
       if (p === null || base === null) continue;
       const actual = value > 0 ? 1 : 0;
       loss += (p - actual) ** 2;
@@ -133,9 +148,8 @@ function fit(history: HistoricalClimate, before: number) {
   const holdout = data.years.length >= 15 ? data.years.slice(-5) : [];
   const selectionYears = holdout.length ? data.years.slice(10, -5) : [];
   const candidates: HistoryCandidate[] = [10, 20, 30, 45].flatMap((window) =>
-    [0, 1].map((prior) => ({ window, prior })),
+    [0, 1].map((prior) => ({ window, prior, method: "weekly" as const })),
   );
-  candidates.push({ window: 45, prior: 0, method: "monthly" });
   const selection =
     selectionYears.length >= 5
       ? candidates
@@ -155,42 +169,32 @@ function fit(history: HistoricalClimate, before: number) {
   const model: HistoryCandidate = selection[0]?.model ?? {
     window: 45,
     prior: 0,
+    method: "weekly",
   };
   const validation = score(data, holdout, model);
   const trainingYears = data.years.slice(-model.window);
-  const monthlyForecast = Object.fromEntries(
-    ["-10", "-11", "-12"].map((month) => {
-      const years = trainingYears.filter((y) =>
-        Object.keys(data.rows.get(y) ?? {}).some(
-          (md) => md.slice(0, 3) === month,
-        ),
-      );
-      const values = years.flatMap((y) =>
-        Object.entries(data.rows.get(y) ?? {})
-          .filter(([md]) => md.slice(0, 3) === month)
-          .map(([, value]) => value),
-      );
-      return [
-        month,
-        years.length >= 10
-          ? {
-              probability: mean(values.map((v) => (v > 0 ? 1 : 0)))!,
-              slots: mean(values)!,
-              years: years.length,
-            }
-          : null,
-      ];
-    }),
+  const seasonDates: string[] = [];
+  for (
+    let date = `${before}-10-01`;
+    date <= `${before}-12-31`;
+    date = addDays(date, 1)
+  )
+    seasonDates.push(date);
+  const weeklyForecast = Object.fromEntries(
+    historicalWeeks(seasonDates).map((week) => [
+      week.key,
+      weeklyPrediction(data.rows, trainingYears, week.start, model),
+    ]),
   );
   return {
-    version: "historical-rolling-v1",
+    version: "historical-weekly-v2",
     model,
     selected: selection.length > 0,
     selectionYears: selectionYears.length,
     selection: selection.map((r) => ({
       window: r.model.window,
       prior: r.model.prior,
-      method: r.model.method ?? "calendar-day",
+      method: r.model.method ?? "weekly",
       brier: r.scores.brier,
       years: r.scores.years,
     })),
@@ -198,7 +202,7 @@ function fit(history: HistoricalClimate, before: number) {
     validation,
     years: data.years,
     trainingYears,
-    monthlyForecast,
+    weeklyForecast,
     dailyLabels: [...data.rows.values()].reduce(
       (s, row) => s + Object.keys(row).length,
       0,
@@ -245,20 +249,9 @@ export function historicalProbability(
   date: string,
 ) {
   const model = historicalModel(history, Number(date.slice(0, 4)));
-  if (model.model.method === "monthly")
-    return model.monthlyForecast[date.slice(4, 7)] ?? null;
-  const values = model.trainingYears
-    .map((y) => history.days[`${y}${date.slice(4)}`])
-    .filter(valid);
-  if (values.length < 10) return null;
-  return {
-    probability:
-      (values.filter((v) => v > 0).length + model.model.prior) /
-      (values.length + 2 * model.model.prior),
-    slots: values.reduce((s, v) => s + v, 0) / values.length,
-    years: values.length,
-  };
+  return model.weeklyForecast[historicalWeek(date).start] ?? null;
 }
+
 function season(values: number[]) {
   let windows = 0,
     longestRun = 0,
@@ -296,7 +289,7 @@ export function historicalDiagnostics(
         .map(sample)
         .filter((v): v is NonNullable<typeof v> => v !== null);
     const probabilities = md.map((d) =>
-      prediction(data.rows, train, d, fitted.model),
+      prediction(data.rows, train, d, fitted.model, year),
     );
     if (!actual || past.length < 10 || probabilities.some((p) => p === null))
       return [];
@@ -319,6 +312,24 @@ export function historicalDiagnostics(
   });
   return {
     ...fitted,
+    historicalDaily: {
+      dates: Object.keys(fitted.weeklyForecast).flatMap(
+        (date) => historicalWeek(date).dates,
+      ),
+      years: fitted.trainingYears.map((year) => ({
+        year,
+        // Compact binary ERA5 labels preserve partial-week filtering without
+        // exposing hourly training payloads. Unknown dates stay explicit.
+        values: Object.keys(fitted.weeklyForecast)
+          .flatMap((date) => historicalWeek(date).dates)
+          .map((date) => {
+            const day = date.slice(4);
+            const value = data.rows.get(year)?.[day];
+            return valid(value) ? (value > 0 ? "1" : "0") : "?";
+          })
+          .join(""),
+      })),
+    },
     annual,
     periodValidation: {
       seasons: tests.length,

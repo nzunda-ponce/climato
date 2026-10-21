@@ -1,3 +1,4 @@
+import { calendarWeekStart } from "./history-weeks";
 import type { PlanningZone } from "./planning-report";
 import { availabilityCell } from "./availability-matrix";
 
@@ -55,6 +56,21 @@ export function estimateTimeline(
   dates: string[],
   step = 1,
 ) {
+  if (step === 7) {
+    const weeks = new Map<string, string[]>();
+    for (const date of dates) {
+      const key = calendarWeekStart(date);
+      const days = weeks.get(key) ?? [];
+      days.push(date);
+      weeks.set(key, days);
+    }
+    return [...weeks.values()].map((days) => ({
+      start: days[0],
+      end: days.at(-1)!,
+      days,
+      ...estimateEvidence(zones, days),
+    }));
+  }
   const rows = [];
   for (let i = 0; i < dates.length; i += step) {
     const days = dates.slice(i, i + step);

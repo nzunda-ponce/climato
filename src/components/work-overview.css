@@ -638,15 +638,6 @@
   padding: 12px;
   background: #f8f9f5;
 }
-.zone-analysis-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.zone-analysis-grid .analytics-panel {
-  padding: 14px;
-}
 .compact .analytics-panel-heading {
   align-items: flex-start;
 }
@@ -669,88 +660,6 @@
 }
 .compact .temporal-basis {
   display: none;
-}
-.analytics-unit {
-  font:
-    9px "SFMono-Regular",
-    Consolas,
-    monospace;
-  color: #667573;
-  white-space: nowrap;
-}
-.monthly-columns {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  margin: 20px 0 15px;
-  overflow-x: auto;
-}
-.monthly-column {
-  flex: 1;
-  min-width: 50px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.work-month-value {
-  color: #243b40;
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1;
-  margin-bottom: 10px;
-}
-.monthly-track {
-  width: 100%;
-  max-width: 64px;
-  height: 123px;
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start;
-  background: repeating-linear-gradient(
-    to top,
-    #f4f6f1,
-    #f4f6f1 30px,
-    #e7ece3 30px,
-    #e7ece3 31px
-  );
-  border-radius: 3px 3px 0 0;
-  overflow: hidden;
-}
-.monthly-track > span {
-  display: block;
-  width: 100%;
-  flex-shrink: 0;
-}
-.monthly-track.missing {
-  background: repeating-linear-gradient(
-    135deg,
-    #f1f3ed,
-    #f1f3ed 4px,
-    #fff 4px,
-    #fff 8px
-  );
-}
-.monthly-name {
-  font-size: 11px;
-  color: #243b40;
-  margin-top: 8px;
-  text-transform: capitalize;
-}
-.monthly-column small {
-  color: #667573;
-  font-size: 8px;
-  margin-top: 3px;
-  text-align: center;
-}
-.monthly-column em {
-  font-size: 8px;
-  color: #927247;
-  font-style: normal;
-  margin-top: 2px;
-}
-.monthly-panel .analytics-footnote {
-  margin-top: 10px;
-  font-size: 9px;
 }
 .evidence-status {
   font-size: 9px;
@@ -1039,18 +948,6 @@
     flex-direction: column;
     gap: 9px;
   }
-  .zone-analysis-grid {
-    grid-template-columns: 1fr;
-  }
-  .monthly-columns {
-    margin-top: 15px;
-  }
-  .monthly-column {
-    align-items: flex-start;
-  }
-  .monthly-track {
-    max-width: 100%;
-  }
   .work-zone-summary .zone-sparkline {
     width: 80px;
   }
@@ -1325,4 +1222,143 @@
   display: block;
   height: 100%;
   background: #087f77;
+}
+
+.historical-years-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 10px;
+}
+.historical-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.historical-controls > span {
+  font-size: 10px;
+  color: #667573;
+}
+.planning-app .historical-controls label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #667573;
+  font-size: 10px;
+}
+.planning-app .historical-controls select {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #243b40;
+  width: auto;
+  background: #f8faf6;
+  border: 1px solid #dfe5df;
+  border-radius: 3px;
+}
+.historical-readout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0 12px;
+}
+.historical-readout > span {
+  min-width: 0;
+}
+.historical-readout strong {
+  display: block;
+  color: #243b40;
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+.historical-readout > span:first-child strong {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.historical-readout > span:last-child strong {
+  color: #087f77;
+}
+.historical-readout small {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #667573;
+}
+.historical-many {
+  background: linear-gradient(
+    90deg,
+    #507e92 33%,
+    #a38b60 33%,
+    #a38b60 66%,
+    #857ba3 66%
+  );
+}
+.analytics-legend .historical-reference {
+  width: 12px;
+  height: 0;
+  border-top: 2px dashed #243b40;
+  border-radius: 0;
+}
+.historical-year-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 13px;
+  margin-top: 13px;
+  border-top: 1px solid #edf0ea;
+}
+.planning-app .historical-year-picker button {
+  min-height: 27px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 3px 6px;
+  background: #f2f5ef;
+  color: #667573;
+  font:
+    10px "SFMono-Regular",
+    Consolas,
+    monospace;
+}
+.planning-app .historical-year-picker button[aria-pressed="true"] {
+  background: #e2eeea;
+  border-color: #8fb9ac;
+  color: #164a47;
+}
+.historical-method-note {
+  margin-top: 10px;
+  font-size: 9px;
+}
+.historical-empty {
+  padding: 20px 0 8px;
+  color: #667573;
+  font-size: 12px;
+  line-height: 1.7;
+}
+@media (max-width: 550px) {
+  .historical-controls {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .historical-readout {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .historical-readout > span:first-child {
+    grid-column: 1 / -1;
+  }
+  .historical-years-panel .analytics-panel-heading {
+    align-items: flex-start;
+  }
+  .historical-years-panel .analytics-panel-heading .evidence-status {
+    white-space: normal;
+    max-width: 100px;
+  }
 }

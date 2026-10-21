@@ -68,9 +68,11 @@ export function scienceSummary(input: PlanningZone[], dates: string[]) {
     if (z.science) {
       const m = z.science.model;
       const label =
-        m.method === "monthly"
-          ? "Referencia mensual"
-          : `${m.window} años · ${m.prior ? "suavizado" : "frecuencia directa"}`;
+        m.method === "weekly"
+          ? `Referencia semanal · ${m.window} años`
+          : m.method === "monthly"
+            ? "Referencia mensual"
+            : `${m.window} años · ${m.prior ? "suavizado" : "frecuencia directa"}`;
       models.set(label, (models.get(label) ?? 0) + 1);
     }
   return {

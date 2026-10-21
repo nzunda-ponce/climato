@@ -5,7 +5,6 @@ import type { PlanningZone, PlanningReport } from "@/domain/planning-report";
 import {
   estimateEvidence,
   estimateTimeline,
-  estimateMonths,
   estimateSources,
   type EstimateSource,
 } from "@/domain/estimate-evidence";
@@ -124,7 +123,7 @@ export function TemporalEstimate({
   stale?: boolean;
   onDetail?: (key: string, date: string) => void;
 }) {
-  const [resolution, setResolution] = useState<1 | 7>(1);
+  const [resolution, setResolution] = useState<1 | 7>(7);
   const [cursor, setCursor] = useState(0);
   const [table, setTable] = useState(false);
   const rows = useMemo(
@@ -367,7 +366,7 @@ export function TemporalEstimate({
       <div className="analytics-chart-footer">
         <p>
           {resolution === 7
-            ? "Media diaria de cada bloque de hasta 7 días. "
+            ? "Media diaria por semana de lunes a domingo. "
             : "Promedio de las ubicaciones con datos en cada fecha. "}
           Color: fuente predominante. La línea histórica representa frecuencia,
           no un pronóstico diario.
@@ -425,76 +424,6 @@ export function TemporalEstimate({
           </table>
         </div>
       )}
-    </section>
-  );
-}
-
-export function MonthlyEstimate({
-  items,
-  dates,
-}: {
-  items: PlanningZone[];
-  dates: string[];
-}) {
-  const rows = useMemo(() => estimateMonths(items, dates), [items, dates]);
-  const scale = Math.max(1, ...rows.map((row) => row.days.length));
-  return (
-    <section className="analytics-panel monthly-panel">
-      <div className="analytics-panel-heading">
-        <div>
-          <span className="analytics-kicker">COMPOSICIÓN DEL ESTIMADO</span>
-          <h2>Mes a mes</h2>
-        </div>
-        <span className="analytics-unit">días / ubicación</span>
-      </div>
-      <div className="monthly-columns">
-        {rows.map((row) => (
-          <div key={row.month} className="monthly-column">
-            <strong className="work-month-value">
-              {row.expected === null ? "—" : n(row.expected)}
-            </strong>
-            <div
-              className={`monthly-track ${row.expected === null ? "missing" : ""}`}
-              aria-label={`${row.month}: ${row.expected === null ? "sin datos" : `${n(row.expected)} días aptos estimados`}`}
-            >
-              {row.sourceBreakdown.map((source) =>
-                source.contribution !== null && source.contribution > 0 ? (
-                  <span
-                    key={source.source}
-                    style={{
-                      height: `${(100 * source.contribution) / scale}%`,
-                      background: sourceMeta[source.source].color,
-                    }}
-                    title={`${sourceMeta[source.source].label}: ${n(source.contribution)} días`}
-                  />
-                ) : null,
-              )}
-            </div>
-            <span className="monthly-name">
-              {new Date(row.month + "-01T12:00Z").toLocaleDateString("es-AR", {
-                month: "short",
-                timeZone: "UTC",
-              })}
-            </span>
-            <small>
-              {shortDate(row.days[0])} – {shortDate(row.days.at(-1)!)}
-            </small>
-            <em>
-              {row.expected === null
-                ? "Sin datos"
-                : row.complete
-                  ? "Completo"
-                  : "Parcial"}
-            </em>
-          </div>
-        ))}
-      </div>
-      <SourceLegend />
-      <p className="analytics-footnote">
-        Altura = días estimados. Color = fuente que los respalda. Escala común
-        de {scale} días; solo fechas del período elegido. Si falta cobertura, la
-        base de ubicaciones puede variar entre meses.
-      </p>
     </section>
   );
 }
