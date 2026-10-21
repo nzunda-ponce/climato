@@ -10,6 +10,7 @@ export function register() {
     !isReportServer() &&
     process.env.NEXT_RUNTIME === "nodejs" &&
     process.env.NEXT_PHASE !== "phase-production-build" &&
+    process.env.CLIMATO_DISABLE_AUTO_SYNC !== "1" &&
     !process.env.DATABASE_URL?.trim() &&
     !shared.climatoSchedulerStartupScheduled
   ) {

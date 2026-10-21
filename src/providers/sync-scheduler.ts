@@ -6,6 +6,8 @@ const shared = globalThis as unknown as {
   climatoSyncTimer?: ReturnType<typeof setInterval>;
 };
 export function startAutoSyncScheduler() {
+  // Diagnostic mode: serve existing data without starting any background jobs.
+  if (process.env.CLIMATO_DISABLE_AUTO_SYNC === "1") return;
   // The shared cloud database is refreshed by GitHub Actions twice daily.
   // Opening another local installation must not start additional API imports.
   if (process.env.DATABASE_URL?.trim()) return;
