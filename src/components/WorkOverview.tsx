@@ -10,6 +10,7 @@ import {
 import { addDays } from "@/domain/types";
 import { reportDates } from "@/domain/opportunity-report";
 import "./work-overview.css";
+import WindyMap from "./WindyMap";
 
 const number = (value: number) =>
   value.toLocaleString("es-AR", { maximumFractionDigits: 1 });
@@ -23,10 +24,12 @@ const date = (value: string) =>
 export default function WorkOverview({
   report,
   zones,
+  windyEnabled = false,
   error,
   onRetry,
   onDetail,
 }: {
+  windyEnabled?: boolean;
   report: PlanningReport | null;
   zones: PlanningZone[];
   error: string;
@@ -101,6 +104,7 @@ export default function WorkOverview({
     type: "map",
     location: "coordinates",
     marker: selectedEquipment ? "true" : "",
+    metricRain: "mm",
     metricWind: "km/h",
     metricTemp: "°C",
   });
@@ -110,7 +114,14 @@ export default function WorkOverview({
     <div className="work-overview">
       <section className="work-map" aria-label="Mapa de Windy">
         <div className="work-map-toolbar">
-          <strong>Windy</strong>
+          <a
+            href={`https://www.windy.com/?${overlay},${lat.toFixed(5)},${lon.toFixed(5)},${selectedEquipment ? 11 : region ? 7 : 5}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Abrir Windy con la selección actual"
+          >
+            Windy ↗
+          </a>
           <label>
             Capa
             <select
@@ -123,14 +134,15 @@ export default function WorkOverview({
             </select>
           </label>
         </div>
-        <iframe
-          title={
-            selectedEquipment
-              ? `Windy · ${selectedEquipment.name}`
-              : "Windy · zonas de trabajo"
-          }
-          src={`https://embed.windy.com/embed2.html?${embed}`}
-          allowFullScreen
+        <WindyMap
+          enabled={windyEnabled}
+          embed={embed.toString()}
+          lat={lat}
+          lon={lon}
+          zoom={selectedEquipment ? 11 : region ? 7 : 5}
+          overlay={overlay}
+          points={selectedEquipment ? [selectedEquipment] : equipment}
+          onSelect={setEquipmentId}
         />
         {selectedEquipment && (
           <div className="work-map-location">

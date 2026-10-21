@@ -41,6 +41,14 @@
   font-size: 12px;
   color: #fff;
 }
+.work-overview .work-map-toolbar a {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.work-overview .work-map-toolbar a:hover {
+  text-decoration: underline;
+}
 .work-map-toolbar select {
   background: #fff;
   color: #22372c;
@@ -54,6 +62,29 @@
   flex: 1;
   border: 0;
   min-height: 500px;
+}
+.work-map-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.work-map-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #202e38;
+  color: #fff;
+  text-align: center;
+}
+.work-map-status p {
+  width: 100%;
 }
 .work-map-location {
   padding: 10px 18px;
