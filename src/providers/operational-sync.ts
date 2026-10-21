@@ -69,6 +69,8 @@ async function plan() {
           },
           { namespaces: ["settings", "pivot", "forecast"] },
         );
+        const errors = [...new Set(results.flatMap((r) => r.errors))];
+        if (errors.length) throw new Error(errors.join(" · "));
         if (
           results.length !== batch.length ||
           results.some((r) => !r.models.length)
@@ -79,6 +81,9 @@ async function plan() {
       },
     });
   }
+  // Refresh the equipment forecast before the more expensive ensemble lane,
+  // so a later provider quota does not leave current work windows untouched.
+  tasks.push(...weatherTasks);
   // Missing locations first, interleaved by work region so no region waits
   // behind all the equipment in another region. Coordinate requests are batched.
   const pending = points.filter(([key]) => {
@@ -131,7 +136,6 @@ async function plan() {
       },
     });
   }
-  tasks.push(...weatherTasks);
   // Refresh already trained zones without waiting for the initial ERA5 import
   // or the public map grid to finish in the background lane.
   for (const [key, p] of points) {
