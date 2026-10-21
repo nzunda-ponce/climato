@@ -51,8 +51,10 @@ const viewLabels: Record<View, string> = {
 };
 export default function PlanningWorkspace({
   initialView = "resumen",
+  windyEnabled = false,
 }: {
   initialView?: View;
+  windyEnabled?: boolean;
 }) {
   const [view, setView] = useState<View>(initialView);
   useEffect(() => {
@@ -560,6 +562,7 @@ export default function PlanningWorkspace({
             )}
             {view === "resumen" && (
               <WorkOverview
+                windyEnabled={windyEnabled}
                 report={report}
                 zones={report?.zones ?? []}
                 error={error}
