@@ -1,5 +1,4 @@
 node_modules/
-.dev-updater.lock
 .next/
 .next-dev/
 .env
@@ -10,13 +9,7 @@ data/research/
 data/long-range/
 data/*.tmp
 data/state.lock
-data/*.log
-data/*.png
-docs/*preview*.png
-docs/*preview*.jpg
 *.tsbuildinfo
 
-.env.local
-.env.*.local
+# Local database and SQLite journal files
 data/*.sqlite*
-data/backups/
