@@ -49,22 +49,7 @@ export function parseEnsemble(
   });
 }
 async function jsonFetch(url: URL) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await fetch(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(90000),
-    });
-    if (response.status === 429 && attempt < 2) {
-      await new Promise((resolve) => setTimeout(resolve, 30000));
-      continue;
-    }
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
-    }
-    return response.json();
-  }
-  throw new Error("Límite de consultas del proveedor");
+  return weatherJson<{ hourly?: RawHourly }>(url);
 }
 export async function loadEnsemble(
   key: string,
@@ -167,7 +152,7 @@ export interface EnsemblePoint {
 // requested equipment coordinate, never to a neighboring point or a grid cell.
 export async function fetchEnsembleBatch(
   points: EnsemblePoint[],
-  request: typeof fetch = fetch,
+  request?: typeof fetch,
 ) {
   if (!points.length) return [];
   const fetchedAt = new Date().toISOString();
