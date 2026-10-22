@@ -329,11 +329,11 @@
   border-radius: 3px;
   background: linear-gradient(
     to right,
-    #f6f5ed,
-    #e1e9d6,
-    #b3d2b7,
-    #63a387,
-    #19634d
+    #f5f7fa,
+    #e1edfc,
+    #aed3f8,
+    #5da4ee,
+    #0059be
   );
 }
 .availability-missing-swatch {

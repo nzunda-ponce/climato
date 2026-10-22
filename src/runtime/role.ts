@@ -11,6 +11,7 @@ export function reportRequestAllowed(path: string, method: string) {
     ["GET", "HEAD"].includes(method) &&
     [
       "/api/planning",
+      "/api/ml-diagnostics",
       "/api/validation",
       "/api/storage",
       "/api/auto-sync",

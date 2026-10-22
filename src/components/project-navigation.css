@@ -1,0 +1,208 @@
+.project-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: rgba(245, 245, 247, 0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid #1d1d1f0b;
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.project-header-inner {
+  max-width: 1400px;
+  min-height: 76px;
+  padding: 14px 32px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.project-header .project-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.7px;
+  text-decoration: none;
+  color: #1d1d1f;
+}
+.project-brand > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #1d1d1f;
+  color: white;
+  font-size: 22px;
+  padding-bottom: 3px;
+}
+.project-views {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid #e6e6eb;
+  border-radius: 99px;
+  background: #ebebef;
+  gap: 3px;
+}
+.project-header .project-views a {
+  display: block;
+  padding: 10px 20px;
+  border-radius: 99px;
+  text-decoration: none;
+  color: #6e6e73;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.3;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.project-header .project-views a[aria-current="page"] {
+  background: white;
+  color: #1d1d1f;
+  box-shadow: 0 2px 6px #00000008;
+}
+.project-header .project-views a:hover {
+  color: #0071e3;
+}
+.project-header a:focus-visible,
+.results-tools a:focus-visible,
+.results-tools summary:focus-visible {
+  outline: 3px solid #007aff;
+  outline-offset: 3px;
+}
+.results-tools {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 18px 3% 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  z-index: 15;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.results-tools > span {
+  font-size: 12px;
+  color: #6e6e73;
+}
+.results-tools > span strong {
+  font-weight: 500;
+  color: #1d1d1f;
+}
+.results-tool-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.results-tool-menu summary {
+  cursor: pointer;
+  list-style: none;
+  border: 1px solid #d8dde0;
+  border-radius: 99px;
+  padding: 8px 14px;
+  background: white;
+  font-size: 12px;
+  color: #1d1d1f;
+}
+.results-tool-menu summary::-webkit-details-marker {
+  display: none;
+}
+.results-tool-menu summary::after {
+  content: "⌄";
+  margin-left: 10px;
+  color: #6e6e73;
+}
+.results-tool-menu[open] summary {
+  border-color: #0071e3;
+}
+.results-tool-menu nav {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 250px;
+  padding: 7px;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 16px;
+  box-shadow: 0 15px 45px #1d1d1f18;
+}
+.planning-app .results-tool-menu nav a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: #414148;
+  text-decoration: none;
+}
+.planning-app .results-tool-menu nav a:hover,
+.planning-app .results-tool-menu nav a[aria-current="location"] {
+  background: #edf4ff;
+  color: #0071e3;
+}
+@media (max-width: 650px) {
+  .project-header-inner {
+    padding: 12px 18px;
+    gap: 12px;
+    min-height: 68px;
+  }
+  .project-header .project-brand {
+    font-size: 17px;
+    gap: 7px;
+  }
+  .project-brand > span {
+    width: 26px;
+    height: 26px;
+    font-size: 19px;
+    border-radius: 8px;
+  }
+  .project-header .project-views a {
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+  .project-views {
+    padding: 3px;
+    gap: 0;
+  }
+  .results-tools {
+    padding: 16px 18px 0;
+  }
+  .results-tools > span {
+    font-size: 10px;
+  }
+  .results-tool-menu summary {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+}
+@media (max-width: 370px) {
+  .project-header-inner {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .project-header .project-brand {
+    font-size: 16px;
+  }
+  .project-views {
+    flex: 1;
+    justify-content: center;
+  }
+}
+@media print {
+  .project-header,
+  .results-tools {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-views a {
+    transition: none;
+  }
+}

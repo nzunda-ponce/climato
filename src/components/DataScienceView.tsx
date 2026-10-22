@@ -53,9 +53,10 @@ export default function DataScienceView({
       <section className="science-hero">
         <div>
           <p className="planning-eyebrow">
-            CIENCIA DE DATOS · CAMPAÑA {report.deadline.slice(0, 4)}
+            ANÁLISIS DE RESULTADOS · CAMPAÑA {report.deadline.slice(0, 4)}
           </p>
           <h2>Qué disponibilidad estimamos hasta fin de año</h2>
+          <a href="/data-science">Ver matrices, métricas y cómo se calcularon →</a>
           <p>
             {date(report.start)}–{date(report.deadline)} · resultados por
             ubicación, agrupados por la segunda letra del equipo.

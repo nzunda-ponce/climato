@@ -1,7 +1,5 @@
-import PlanningWorkspace from "@/components/PlanningWorkspace";
-export const metadata = {
-  title: "Ciencia de datos y estimación de campaña · Climato",
-};
-export default function SciencePage() {
-  return <PlanningWorkspace initialView="ciencia" />;
+import { redirect } from "next/navigation";
+// The former campaign analysis is now a tool within Results.
+export default function Page() {
+  redirect("/#ciencia");
 }

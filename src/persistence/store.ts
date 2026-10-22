@@ -351,6 +351,33 @@ export async function readClimate(
   });
 }
 
+// Read one diagnostic batch in a single consistent snapshot, rather than
+// opening a database transaction for each location and its feature record.
+export async function readClimateBatch(
+  keys: string[],
+): Promise<HistoricalClimate[]> {
+  if (!keys.length) return [];
+  const db = await getDatabase();
+  return db.read(async (tx) => {
+    const rows = await tx.list({
+      namespaces: ["climate", "climate-feature"],
+      keys: [...new Set(keys)],
+    });
+    const features = new Map(
+      rows
+        .filter((r) => r.namespace === "climate-feature")
+        .map((r) => [r.key, unpack<HistoricalClimate["features"]>(r)]),
+    );
+    return rows
+      .filter((r) => r.namespace === "climate")
+      .map((row) => {
+        const history = unpack<HistoricalClimate>(row);
+        const values = features.get(row.key);
+        return values ? { ...history, features: values } : history;
+      });
+  });
+}
+
 // A renewable lease coordinates the three download lanes across server processes.
 // No connection is held while waiting for a weather provider.
 export async function acquireSyncLease(name: string) {

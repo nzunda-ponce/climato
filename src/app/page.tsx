@@ -1,5 +1,6 @@
 import PlanningWorkspace from "@/components/PlanningWorkspace";
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Panel de resultados · Climato" };
 export default function Page() {
   return (
     <PlanningWorkspace

@@ -20,13 +20,17 @@ Abrir <http://127.0.0.1:3000>. En Windows también se puede iniciar con doble cl
 
 La instalación compartida ya usa Vercel para la web, Neon para los datos y GitHub Actions para las actualizaciones. No depende de que la PC esté encendida. Para consultar esos mismos datos localmente, configurar `DATABASE_URL` y `CLIMATO_ROLE=web` según la guía anterior.
 
-## Nueva pantalla de planificación
+## Dos vistas principales
 
-La página principal y `/informe` abren un resumen minimalista: Windy a la izquierda, días esperados a la derecha y una matriz de calor debajo. El selector **Días / Semanas** muestra probabilidades diarias para los próximos 14 días o días esperados semanales hasta el cierre de campaña. Cada fila agrupa una zona de trabajo y promedia sus coordenadas seleccionadas, con igual peso por ubicación; no multiplica la disponibilidad por cantidad de equipos.
+La navegación global tiene dos entradas: **Resultados** (`/`), con el panel de planificación, y **Explicación de ML** (`/data-science`), con la explicación educativa y evaluación del modelo. Dentro de Resultados, el menú **Herramientas** conserva zonas/equipos, detalle, verificación, datos/criterios y análisis de campaña. Las rutas anteriores `/informe` y `/ciencia-de-datos` redirigen al panel y a su análisis de campaña, respectivamente.
 
-Los colores expresan disponibilidad media por día cubierto; los valores semanales suman probabilidades por ubicación. Las celdas sin información se distinguen de 0%, las parciales llevan trama y al seleccionarlas se muestran fuentes y cobertura. No se publica un intervalo regional que suponga independencia entre ubicaciones. Los totales parciales no extrapolan faltantes y la fecha de mayor disponibilidad sólo compara días con cobertura completa de la selección.
+## Panel de resultados
 
-Los apartados **Zonas**, **Detalle por ubicación**, **Validación** y **Datos y criterios** conservan las herramientas del informe sin mostrarlas todas en el inicio. La selección se comparte entre apartados y persiste al recargar; la validación se consulta cuando se abre su apartado.
+El inicio comparte la estética de la vista de ML y concentra cinco bloques: métrica general, **Estimación actual frente a todas las temporadas**, **Distribución geográfica**, **Disponibilidad por zona** y **Detalle por zona**. Los filtros de zona y equipo se comparten; seleccionar una semana en la matriz actualiza el mapa y el detalle desplegable de equipos.
+
+Las curvas muestran las temporadas históricas disponibles con suavizado visual que conserva los puntos y no cruza huecos. El equipo TBD se conserva bajo **Sin zona asignada**; no genera una Zona B. El mapa permite alternar entre disponibilidad y las capas meteorológicas de Windy, que mantiene sus propios controles temporales.
+
+Se conserva el promedio por coordenada, sin multiplicar por equipos ni extrapolar faltantes. Las referencias históricas no se presentan como pronósticos meteorológicos. Los apartados de equipos, detalle, validación y criterios conservan sus herramientas.
 
 El informe incluye:
 
@@ -41,6 +45,10 @@ El informe incluye:
 La antigua superficie de calor propia y su malla pública de 527 nodos ya no se descargan automáticamente ni aparecen en la página principal. Los endpoints y herramientas anteriores se conservan para compatibilidad. Los equipos terminados y las coordenadas que requieren revisión quedan fuera del análisis.
 
 ## Cálculo y evidencia
+
+### Auditoría de machine learning
+
+La subpágina `/data-science`, enlazada como **Explicación de ML**, muestra por defecto el total de ubicaciones del modelo meteorológico al umbral fijo del 70%: matriz de confusión, precisión, recall, F1 y calibración, con ayudas breves, explicación visual inicial, anillos de métricas, distribución interactiva de aciertos/errores, barras por probabilidad y gráfico de calibración. El detalle por ubicación se despliega bajo demanda. Los totales suman casos únicos ubicación-día y recalculan métricas; no promedian porcentajes por equipo. Una explicación breve muestra los datos, las particiones temporales y los conteos usados; la referencia comparable y las fórmulas se despliegan bajo demanda. Las matrices usan los árboles guardados y las mismas variables/cohortes del entrenamiento; se verifican huella, cantidad de casos y Brier. No se reentrena ni se modifica la base. Para ejecutar una vista de desarrollo simultánea sin compartir archivos generados, configurar `CLIMATO_DEV_DIST_DIR=.next-audit-dev`.
 
 La clave de análisis usa coordenadas redondeadas a cinco decimales, en lugar de agrupar equipos por celdas de 0,25°. Los equipos en la misma coordenada comparten meteorología; equipos cercanos en coordenadas diferentes se consultan por separado. Consultar una coordenada no mejora la resolución nativa del modelo meteorológico.
 

@@ -27,6 +27,7 @@ test("hosted report mode is read-only by default and allows only intended API re
     assert.equal(isReportServer(), true);
     for (const route of [
       "/api/planning",
+      "/api/ml-diagnostics",
       "/api/validation",
       "/api/storage",
       "/api/auto-sync",

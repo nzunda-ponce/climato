@@ -42,12 +42,12 @@ const selectionKey = "climato-planning-locations-v1";
 type View =
   "resumen" | "zonas" | "detalle" | "validacion" | "datos" | "ciencia";
 const viewLabels: Record<View, string> = {
-  resumen: "Resumen",
+  resumen: "Panel de resultados",
   zonas: "Zonas",
   detalle: "Detalle por ubicación",
   validacion: "Validación",
   datos: "Datos y criterios",
-  ciencia: "Ciencia de datos",
+  ciencia: "Análisis de campaña",
 };
 export default function PlanningWorkspace({
   initialView = "resumen",
@@ -57,6 +57,7 @@ export default function PlanningWorkspace({
   windyEnabled?: boolean;
 }) {
   const [view, setView] = useState<View>(initialView);
+  const toolsRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const update = () => {
       const hash = window.location.hash.slice(1),
@@ -70,7 +71,11 @@ export default function PlanningWorkspace({
     };
     update();
     window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
+    window.addEventListener("popstate", update);
+    return () => {
+      window.removeEventListener("hashchange", update);
+      window.removeEventListener("popstate", update);
+    };
   }, [initialView]);
   const navigate = (target: View) => {
     setView(target);
@@ -247,37 +252,35 @@ export default function PlanningWorkspace({
     );
   };
   const navigation = (
-    <nav className="planning-tabs" aria-label="Apartados de Climato">
-      {(Object.entries(viewLabels) as [View, string][])
-        .filter(
-          ([key]) =>
-            view !== "resumen" || ["resumen", "zonas", "datos"].includes(key),
-        )
-        .map(([key, label]) => (
-          <a
-            key={key}
-            href={
-              key === "ciencia"
-                ? "/ciencia-de-datos"
-                : initialView === "ciencia"
-                  ? `/#${key}`
-                  : `#${key}`
-            }
-            aria-current={view === key ? "page" : undefined}
-            onClick={() => setView(key)}
-          >
-            {view === "resumen"
-              ? (
-                  {
-                    resumen: "Inicio",
-                    zonas: "Equipos",
-                    datos: "Datos y criterios",
-                  } as Partial<Record<View, string>>
-                )[key]
-              : label}
-          </a>
-        ))}
-    </nav>
+    <div className="results-tools">
+      <span>
+        <strong>Resultados</strong>
+        {view !== "resumen"
+          ? ` / ${viewLabels[view]}`
+          : " / Disponibilidad para ensayos"}
+      </span>
+      <details ref={toolsRef} className="results-tool-menu">
+        <summary>Herramientas</summary>
+        <nav aria-label="Herramientas del panel de resultados">
+          {(Object.entries(viewLabels) as [View, string][]).map(
+            ([key, label]) => (
+              <a
+                key={key}
+                href={`/#${key}`}
+                aria-current={view === key ? "location" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (toolsRef.current) toolsRef.current.open = false;
+                  navigate(key);
+                }}
+              >
+                {label}
+              </a>
+            ),
+          )}
+        </nav>
+      </details>
+    </div>
   );
   return (
     <div className={`planning-app ${view === "resumen" ? "work-home" : ""}`}>
@@ -549,7 +552,7 @@ export default function PlanningWorkspace({
                 className="planning-selection-done"
                 onClick={() => navigate("resumen")}
               >
-                Ver análisis · {zones.length} ubicaciones
+                Volver a resultados · {zones.length} ubicaciones
               </button>
             </aside>
           )}

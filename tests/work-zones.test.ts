@@ -14,10 +14,33 @@ test("work zones use the second letter, including equipment with a shared displa
   assert.equal(equipmentZone("BE1187 / BE4577"), "E");
   assert.equal(equipmentZone(" bt146c2a/b "), "T");
   assert.equal(equipmentZone("123"), null);
+  assert.equal(equipmentZone("tbd"), null);
+  assert.equal(equipmentZone(" TBD-01 "), null);
+  assert.deepEqual(equipmentZoneNames([{ name: "TBD" }]), [
+    "Sin zona asignada",
+  ]);
   assert.deepEqual(
     equipmentZoneNames([{ name: "BE1187" }, { name: "BE4577" }]),
     ["Zona E"],
   );
+});
+
+test("an old published TBD membership is relabelled without discarding equipment or weather", () => {
+  const original = {
+    key: "location",
+    name: "Zona B",
+    regions: ["Zona B"],
+    fields: [],
+    pending: 1,
+    equipment: [{ name: "tbd" }],
+    outlook: [{ date: "2026-10-23", probability: 0.8 }],
+  } as unknown as PlanningZone;
+  const [fixed] = splitWorkZones(original);
+  assert.equal(fixed.name, "Sin zona asignada");
+  assert.deepEqual(fixed.regions, ["Sin zona asignada"]);
+  assert.equal(fixed.key, original.key);
+  assert.deepEqual(fixed.equipment, original.equipment);
+  assert.deepEqual(fixed.outlook, original.outlook);
 });
 test("shared coordinates are split by work membership without doubling weather statistics", () => {
   const original = {

@@ -3,6 +3,8 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import "./console.css";
 import DevAutoReload from "@/components/DevAutoReload";
+import ProjectHeader from "@/components/ProjectHeader";
+import "@/components/project-navigation.css";
 export const metadata: Metadata = {
   title: "Climato · Planificación de uniformidades",
   robots: { index: false, follow: false },
@@ -18,6 +20,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <DevAutoReload />
+        <ProjectHeader />
         {children}
       </body>
     </html>

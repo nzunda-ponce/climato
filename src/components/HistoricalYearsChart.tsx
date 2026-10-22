@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { PlanningZone } from "@/domain/planning-report";
 import { historicalCurves } from "@/domain/historical-curves";
+import { smoothPath } from "@/domain/chart-path";
 
 const percent = (value: number | null | undefined) =>
   value == null
@@ -15,12 +16,12 @@ const dateLabel = (date: string) =>
     timeZone: "UTC",
   });
 const palette = [
-  "#507e92",
-  "#a38b60",
-  "#6b8b70",
-  "#857ba3",
-  "#9d7680",
-  "#598d8a",
+  "#499ee8",
+  "#6b8aef",
+  "#50b7b2",
+  "#a584d8",
+  "#78a6ce",
+  "#5ac5cc",
 ];
 
 export default function HistoricalYearsChart({
@@ -52,13 +53,13 @@ export default function HistoricalYearsChart({
       : left + (index * (right - left)) / (data.weeks.length - 1);
   const y = (value: number) => bottom - value * (bottom - top);
   const path = (points: { probability: number | null }[]) =>
-    points
-      .map((point, i) =>
+    smoothPath(
+      points.map((point, index) =>
         point.probability === null
-          ? ""
-          : `${i === 0 || points[i - 1].probability === null ? "M" : "L"}${x(i).toFixed(1)},${y(point.probability).toFixed(1)}`,
-      )
-      .join(" ");
+          ? null
+          : { x: x(index), y: y(point.probability) },
+      ),
+    );
   const ticks = [
     ...new Set([
       0,
@@ -78,9 +79,9 @@ export default function HistoricalYearsChart({
       <div className="analytics-panel-heading">
         <div>
           <span className="analytics-kicker">
-            HISTÓRICOS DE REFERENCIA Y EVALUACIÓN
+            COMPARACIÓN SEMANAL · TODAS LAS SERIES
           </span>
-          <h2>La misma semana, año por año</h2>
+          <h2>Estimación actual frente a todas las temporadas</h2>
         </div>
         <span className="evidence-status">
           {data.curves.length} años · {data.locations}/{data.totalLocations}{" "}
@@ -154,7 +155,7 @@ export default function HistoricalYearsChart({
             className="historical-years-chart"
             viewBox="0 0 720 211"
             role="img"
-            aria-label={`${data.curves.length} curvas históricas semanales, una por año. La línea oscura es la referencia histórica semanal y la verde la estimación actual. Consultá los datos con el selector inferior.`}
+            aria-label={`${data.curves.length} curvas históricas semanales, una por año. La línea oscura es la referencia histórica semanal y la azul la estimación actual. Consultá los datos con el selector inferior.`}
             onPointerMove={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               const point = ((event.clientX - rect.left) / rect.width) * 720;
@@ -241,7 +242,7 @@ export default function HistoricalYearsChart({
             <path
               d={path(data.estimate)}
               fill="none"
-              stroke="#087f77"
+              stroke="#007aff"
               strokeWidth="2.8"
               vectorEffect="non-scaling-stroke"
             />
@@ -263,7 +264,7 @@ export default function HistoricalYearsChart({
                   cx={x(i)}
                   cy={y(point.probability)}
                   r="3"
-                  fill="#087f77"
+                  fill="#007aff"
                 />
               ) : null,
             )}
@@ -316,29 +317,32 @@ export default function HistoricalYearsChart({
               Referencia histórica semanal
             </span>
             <span>
-              <i style={{ background: "#087f77" }} />
+              <i style={{ background: "#007aff" }} />
               Estimación actual
             </span>
           </div>
-          <div
-            className="historical-year-picker"
-            role="group"
-            aria-label="Años usados para la referencia histórica"
-          >
-            {data.curves.map((curve) => (
-              <button
-                key={curve.year}
-                aria-pressed={highlighted?.year === curve.year}
-                onClick={() =>
-                  setSelectedYear((current) =>
-                    current === String(curve.year) ? "" : String(curve.year),
-                  )
-                }
-              >
-                {curve.year}
-              </button>
-            ))}
-          </div>
+          <details className="historical-years-disclosure">
+            <summary>Ver los {data.curves.length} años disponibles</summary>
+            <div
+              className="historical-year-picker"
+              role="group"
+              aria-label="Años usados para la referencia histórica"
+            >
+              {data.curves.map((curve) => (
+                <button
+                  key={curve.year}
+                  aria-pressed={highlighted?.year === curve.year}
+                  onClick={() =>
+                    setSelectedYear((current) =>
+                      current === String(curve.year) ? "" : String(curve.year),
+                    )
+                  }
+                >
+                  {curve.year}
+                </button>
+              ))}
+            </div>
+          </details>
           <div className="analytics-chart-footer">
             <p>
               Datos ERA5 reconstruidos, no trabajos realizados. Se comparan las
@@ -359,15 +363,15 @@ export default function HistoricalYearsChart({
               Se incluyen los años de entrenamiento, selección, calibración y
               prueba del modelo ML, identificados en el panel de validación. La
               línea histórica discontinua conserva la referencia semanal para
-              comparar; la verde muestra la estimación actual.
+              comparar; la azul muestra la estimación actual.
             </p>
           )}
           <p className="analytics-footnote historical-method-note">
             La referencia combina las ubicaciones y las ventanas de años
             elegidas por el modelo; puede incluir suavizado. Las curvas de cada
-            año muestran frecuencias sin suavizar. En los extremos se muestra la
-            semana histórica completa; la estimación actual usa solo fechas del
-            filtro.
+            año muestran frecuencias calculadas de sus datos; el suavizado del
+            trazado es solo visual. En los extremos se muestra la semana
+            histórica completa; la estimación actual usa solo fechas del filtro.
           </p>
           {showData && (
             <div className="analytics-table-scroll">

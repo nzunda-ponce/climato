@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { smoothSegments } from "@/domain/chart-path";
 import type { PlanningZone, PlanningReport } from "@/domain/planning-report";
 import {
   estimateEvidence,
@@ -135,6 +136,11 @@ export function TemporalEstimate({
       ? (width - left - right) / 2
       : (i * (width - left - right)) / (rows.length - 1));
   const y = (value: number) => bottom - value * (bottom - top);
+  const lineSegments = smoothSegments(
+    rows.map((row, index) =>
+      row.probability === null ? null : { x: x(index), y: y(row.probability) },
+    ),
+  );
   const ticks = [
     ...new Set([
       0,
@@ -289,13 +295,12 @@ export function TemporalEstimate({
                 strokeWidth={Math.max(2, (width - left - right) / rows.length)}
               />
               {next?.probability != null && (
-                <line
-                  x1={x(i)}
-                  x2={x(i + 1)}
-                  y1={y(row.probability)}
-                  y2={y(next.probability)}
+                <path
+                  d={lineSegments[i]}
+                  fill="none"
                   stroke={color}
-                  strokeWidth="2"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
                   strokeDasharray={
                     dominant(row).source === "histórico" ? "4 3" : undefined
                   }

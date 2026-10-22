@@ -1,4 +1,5 @@
 export function equipmentZone(name: string): string | null {
+  if (/^TBD(?:\b|_)/i.test(name.trim())) return null;
   return (
     name
       .trim()
@@ -12,9 +13,7 @@ export function equipmentZoneNames(equipment: Equipment[]) {
     ...new Set(
       equipment
         .map((e) => equipmentZone(e.name) ?? "?")
-        .map((code) =>
-          code === "?" ? "Sin zona identificable" : `Zona ${code}`,
-        ),
+        .map((code) => (code === "?" ? "Sin zona asignada" : `Zona ${code}`)),
     ),
   ].sort();
 }
@@ -27,6 +26,7 @@ export function splitWorkZones<
     regions: string[];
     fields: string[];
     pending: number;
+    name?: string;
     locationKey?: string;
   },
 >(z: T) {
@@ -37,10 +37,11 @@ export function splitWorkZones<
       (e) =>
         (equipmentZone(e.name)
           ? `Zona ${equipmentZone(e.name)}`
-          : "Sin zona identificable") === name,
+          : "Sin zona asignada") === name,
     ) as T["equipment"];
     return {
       ...z,
+      name,
       key: names.length > 1 ? `${z.locationKey ?? z.key}::${name}` : z.key,
       locationKey: z.locationKey ?? z.key,
       regions: [name],

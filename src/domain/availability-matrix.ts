@@ -85,11 +85,11 @@ export function availabilityColor(probability: number | null) {
   if (probability === null)
     return { backgroundColor: "#f1f3f3", color: "#697776" };
   const palette = [
-    [246, 245, 237],
-    [225, 233, 214],
-    [179, 210, 183],
-    [99, 163, 135],
-    [25, 99, 77],
+    [245, 247, 250],
+    [225, 237, 252],
+    [174, 211, 248],
+    [93, 164, 238],
+    [0, 89, 190],
   ];
   const value = Math.max(0, Math.min(1, probability)) * 4,
     index = Math.min(3, Math.floor(value)),

@@ -15,6 +15,7 @@ import {
 } from "../src/domain/machine-learning";
 import { defaultRules, addDays } from "../src/domain/types";
 import { rulesSignature, type HistoricalClimate } from "../src/domain/evidence";
+import { modelDiagnostics } from "../src/ml/model-diagnostics";
 
 function sampleRows(count: number, seed: number): TrainingRow[] {
   let state = seed;
@@ -145,6 +146,16 @@ function historyFixture(): HistoricalClimate {
 test("future test labels cannot change fitted trees, calibration, or temporal splits", () => {
   const history = historyFixture();
   const artifact = trainClimateModels(history, 2026);
+  const diagnostics = modelDiagnostics({...history, machineLearning: artifact}, 0.7)!;
+  for (const name of ["weather", "calendar"] as const) {
+    assert.equal(diagnostics[name].matchesSavedCount, true);
+    assert.equal(diagnostics[name].model.count, artifact[name].test.count);
+    assert.ok(Math.abs(diagnostics[name].model.brier! - artifact[name].test.brier!) < 1e-12);
+    assert.ok(Math.abs(diagnostics[name].baseline.brier! - artifact[name].test.baselineBrier!) < 1e-12);
+  }
+  const altered = structuredClone(history);
+  altered.features![0].wind += 1;
+  assert.equal(modelDiagnostics({...altered, machineLearning: artifact}, 0.7), null);
   const changed = structuredClone(history);
   for (const date of Object.keys(changed.days))
     if (Number(date.slice(0, 4)) >= 2021)
