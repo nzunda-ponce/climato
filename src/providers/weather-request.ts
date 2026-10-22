@@ -6,19 +6,24 @@ async function readWeatherJson<T>(
   pause = (ms: number) =>
     new Promise<void>((resolve) => setTimeout(resolve, ms)),
 ): Promise<T> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const retryDelays = [2000, 5000, 10000];
+  for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
     try {
       const response = await request(url, {
         cache: "no-store",
         signal: AbortSignal.timeout(90000),
       });
       if (!response.ok) {
-        if ([502, 503, 504].includes(response.status) && attempt === 0) {
+        if (
+          [408, 500, 502, 503, 504].includes(response.status) &&
+          attempt < retryDelays.length
+        ) {
           await response.body?.cancel();
-          await pause(1000);
+          await pause(retryDelays[attempt]);
           continue;
         }
         // Do not include response bodies or URLs: they may contain credentials.
+        await response.body?.cancel();
         throw new Error(`HTTP ${response.status}`);
       }
       return await response.json();
@@ -29,8 +34,8 @@ async function readWeatherJson<T>(
           error.name === "TimeoutError" ||
           error.name === "AbortError" ||
           error instanceof SyntaxError);
-      if (transient && attempt === 0) {
-        await pause(1000);
+      if (transient && attempt < retryDelays.length) {
+        await pause(retryDelays[attempt]);
         continue;
       }
       const cause = error instanceof Error ? error.cause : undefined;
@@ -55,7 +60,7 @@ const wait = (ms: number) =>
 // counts multi-location/model queries as multiple calls, so parallel batches
 // can exhaust its quota even when the HTTP request count looks small.
 export function createWeatherClient(
-  request: typeof fetch = fetch,
+  request: typeof fetch = (input, init) => fetch(input, init),
   pause = wait,
   now = Date.now,
   intervalMs = 2000,

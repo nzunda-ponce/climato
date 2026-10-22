@@ -3,6 +3,7 @@ import {
   compatibleMachineLearning,
 } from "@/domain/machine-learning";
 import { readCache, writeCache } from "@/persistence/store";
+import { weatherJson } from "./weather-request";
 import { addDays, Hour, localDate, Rules } from "@/domain/types";
 import { dailyRainTotal } from "@/domain/weather-rules";
 import {
@@ -27,26 +28,14 @@ export async function writeLongCache(name: string, value: unknown) {
   if (!/^[\w.,-]+$/.test(name)) throw new Error("Nombre de caché inválido");
   await writeCache("long-range", name, value);
 }
-export async function fetchJson(url: URL) {
-  for (let i = 0; i < 4; i++) {
-    const r = await fetch(url, {
-      signal: AbortSignal.timeout(120000),
-      cache: "no-store",
-    });
-    if (r.status === 429 && i < 3) {
-      await new Promise((resolve) => setTimeout(resolve, 30000));
-      continue;
-    }
-    if (!r.ok)
-      throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 180)}`);
-    try {
-      return await r.json();
-    } catch (error) {
-      if (i === 3) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-  }
-  throw new Error("Límite de consultas de Open-Meteo");
+export async function fetchJson(
+  url: URL,
+  request?: typeof fetch,
+  pause?: (ms: number) => Promise<void>,
+) {
+  // Seasonal and historical requests share transport retries, pacing and the
+  // quota pause with operational forecasts. Never bypass this queue.
+  return weatherJson<any>(url, request, pause);
 }
 function endpoint(
   kind: "archive" | "seasonal" | "forecast",

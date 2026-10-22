@@ -59,7 +59,7 @@ test("persistent network failures stay failures with safe diagnostics", async ()
   await assert.rejects(weatherJson(url, request, noWait), {
     message: "Descarga interrumpida (ECONNRESET); reintento agotado.",
   });
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
 });
 
 test("queued downloads wait for the previous JSON body and pace the next request", async () => {
@@ -132,7 +132,7 @@ test("an exhausted transport retry does not poison the next queued download", as
   let calls = 0;
   const client = createWeatherClient(
     async () => {
-      if (++calls <= 2) throw new TypeError("fetch failed");
+      if (++calls <= 4) throw new TypeError("fetch failed");
       return Response.json({ ok: true });
     },
     noWait,
@@ -142,5 +142,42 @@ test("an exhausted transport retry does not poison the next queued download", as
   const results = await Promise.allSettled([client(url), client(url)]);
   assert.equal(results[0].status, "rejected");
   assert.equal(results[1].status, "fulfilled");
-  assert.equal(calls, 3);
+  assert.equal(calls, 5);
+});
+
+test("repeated transport failures recover with increasing waits", async () => {
+  const waits: number[] = [];
+  let calls = 0;
+  const result = await weatherJson(
+    url,
+    async () => {
+      if (++calls < 4)
+        throw new TypeError("fetch failed", {
+          cause: { code: "UND_ERR_CONNECT_TIMEOUT" },
+        });
+      return Response.json({ recovered: true });
+    },
+    async (ms) => {
+      waits.push(ms);
+    },
+  );
+  assert.deepEqual(result, { recovered: true });
+  assert.deepEqual(waits, [2000, 5000, 10000]);
+  assert.equal(calls, 4);
+});
+
+test("persistent server failures are bounded and do not leak their bodies", async () => {
+  let calls = 0;
+  await assert.rejects(
+    weatherJson(
+      url,
+      async () => {
+        calls++;
+        return new Response("secret provider response", { status: 503 });
+      },
+      noWait,
+    ),
+    { message: "HTTP 503" },
+  );
+  assert.equal(calls, 4);
 });

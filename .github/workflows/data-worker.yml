@@ -34,6 +34,8 @@ jobs:
       WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
       CLIMATO_ROLE: worker
       CLIMATO_JOB_MAX_MINUTES: "30"
+      # Prefer IPv4 on hosted runners; retain Node's address-family fallback.
+      NODE_OPTIONS: "--dns-result-order=ipv4first --enable-network-family-autoselection"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

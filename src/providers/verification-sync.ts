@@ -4,6 +4,7 @@ import { addDays, Hour, localDate } from "@/domain/types";
 import { alignHourlyIntervals } from "@/domain/evidence";
 import { verifyPredictionDays } from "@/domain/forecast-validation";
 import { SyncTask } from "./sync-runner";
+import { weatherJson } from "./weather-request";
 
 // ERA5 is a retrospective weather reference, not a field observation. It has
 // publication latency; absent hours remain unverified and never count as dry.
@@ -57,15 +58,15 @@ export async function verificationTasks(): Promise<SyncTask[]> {
         if (process.env.WEATHER_API_KEY)
           params.apikey = process.env.WEATHER_API_KEY;
         Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-        const response = await fetch(url, {
-          cache: "no-store",
-          signal: AbortSignal.timeout(60000),
-        });
-        if (!response.ok)
-          throw new Error(`Verificación ERA5: HTTP ${response.status}`);
-        const data = await response.json(),
+        const data = await weatherJson<{
+            hourly?: {
+              time: string[];
+              wind_speed_10m?: unknown[];
+              precipitation?: unknown[];
+            };
+          }>(url),
           h = data.hourly;
-        if (!Array.isArray(h?.time))
+        if (!h || !Array.isArray(h.time))
           throw new Error("ERA5 no devolvió datos horarios para verificar.");
         const number = (v: unknown) =>
           typeof v === "number" && Number.isFinite(v) ? v : null;
