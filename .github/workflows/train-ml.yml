@@ -1,0 +1,29 @@
+name: Entrenar ML con el histórico completo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: climato-data-worker
+  cancel-in-progress: false
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      DATABASE_URL: ${{ secrets.CLIMATO_DATABASE_URL }}
+      WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+      CLIMATO_ROLE: worker
+      NODE_OPTIONS: "--dns-result-order=ipv4first --enable-network-family-autoselection"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Completar 45 temporadas ERA5 en todas las ubicaciones
+        run: node --import tsx scripts/prepare-ml-history.ts
+      - name: Entrenar, validar y publicar modelos con las 45 temporadas
+        run: node --import tsx scripts/train-ml.ts --require-years=45 --refresh-forecast

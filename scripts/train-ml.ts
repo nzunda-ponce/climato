@@ -1,4 +1,5 @@
 import { loadEnvConfig } from "@next/env";
+import { trainingHistoryCoverage } from "../src/ml/history-coverage";
 loadEnvConfig(process.cwd());
 // A separate CLI process owns training. Next only reads fitted trees.
 process.env.CLIMATO_ROLE = "worker";
@@ -37,6 +38,19 @@ async function main() {
     const state = await readState({
       namespaces: ["settings", "pivot", "climate", "climate-feature"],
     });
+    const requiredArg = process.argv.find((arg) =>
+      arg.startsWith("--require-years="),
+    );
+    if (requiredArg) {
+      const required = Number(requiredArg.split("=")[1]);
+      if (!Number.isInteger(required) || required < 21 || required > 45)
+        throw new Error("--require-years debe ser un entero entre 21 y 45.");
+      const coverage = trainingHistoryCoverage(state, required);
+      if (!coverage.locations || coverage.missingSeasons)
+        throw new Error(
+          `Histórico incompleto: ${coverage.complete}/${coverage.locations} ubicaciones con ${required} temporadas. Completar el histórico antes de entrenar.`,
+        );
+    }
     const keys = new Set(
       state.pivots
         .filter((p) => p.status !== "TERMINADO")

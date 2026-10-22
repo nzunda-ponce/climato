@@ -19,6 +19,26 @@ variables necesitarían cobertura histórica y una entrada válida al pronostica
 
 ## Entrenar en la computadora que tiene los históricos
 
+### Corrida única con el máximo histórico
+
+El workflow manual **Entrenar ML con el histórico completo** (`train-ml.yml`)
+completa primero las 45 temporadas de todas las ubicaciones activas (1981–2025
+para la campaña 2026). Reanuda las descargas pendientes, respeta las pausas del
+proveedor y guarda cada lote. No tiene programación periódica.
+
+Solo después ejecuta `scripts/train-ml.ts --require-years=45 --refresh-forecast`.
+La comprobación exige cada año del período en cada ubicación; no basta con que
+una parte de las ubicaciones tenga históricos. La corrida entrena los dos
+estimadores existentes por ubicación y conserva la evaluación temporal y los
+criterios de selección. Cada modelo terminado se guarda en la base compartida
+y los escenarios estacionales se procesan con los modelos seleccionados.
+
+Si las fuentes siguen caídas tras las reanudaciones, el proceso se detiene
+antes de entrenar con una cobertura menor. Volver a ejecutar conserva todo el
+avance confirmado y omite modelos que ya coinciden con los datos. Las 45
+temporadas disponibles no garantizan que todas cumplan la cobertura mínima de
+etiquetas y variables: el entrenamiento sigue excluyendo años insuficientes.
+
 Node y las dependencias del proyecto son suficientes. La web puede seguir
 abierta y mantener `CLIMATO_DISABLE_AUTO_SYNC=1`.
 
