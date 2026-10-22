@@ -13,6 +13,7 @@ import "./work-overview.css";
 import WindyMap from "./WindyMap";
 import HistoricalYearsChart from "./HistoricalYearsChart";
 import MachineLearningPanel from "./MachineLearningPanel";
+import WorkInsights from "./WorkInsights";
 import {
   EstimateStats,
   TemporalEstimate,
@@ -315,6 +316,13 @@ export default function WorkOverview({
               onDetail={onDetail}
             />
             <CriteriaStrip report={report} />
+            <WorkInsights
+              items={filtered}
+              dates={dates}
+              stale={Boolean(stale)}
+              onDetail={onDetail}
+            />
+            <HistoricalYearsChart items={filtered} dates={dates} />
             <div className="work-zones-heading">
               <div>
                 <span className="analytics-kicker">
@@ -384,17 +392,6 @@ export default function WorkOverview({
                         </span>
                       </div>
                       <ZoneSparkline items={items} dates={dates} />
-                      <div className="work-zone-coverage">
-                        <strong>
-                          {summary.total
-                            ? Math.round(
-                                (100 * summary.covered) / summary.total,
-                              )
-                            : 0}
-                          %
-                        </strong>
-                        <span>cobertura</span>
-                      </div>
                       <div className="work-zone-number">
                         <strong>
                           {summary.expected === null

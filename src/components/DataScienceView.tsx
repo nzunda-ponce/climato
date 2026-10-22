@@ -80,7 +80,7 @@ export default function DataScienceView({
           <span>Días aptos estimados hasta {date(report.deadline)}</span>
           <strong>
             {summary.expected.expected === null
-              ? "Sin cobertura"
+              ? "Sin estimación"
               : number(summary.expected.expected)}
           </strong>
           <p>
@@ -88,7 +88,7 @@ export default function DataScienceView({
             proyecciones e historia.{" "}
             {summary.expected.complete
               ? "Período con datos completos."
-              : "Cobertura parcial; no se extrapolan fechas faltantes."}
+              : "Estimación parcial; no se extrapolan fechas faltantes."}
           </p>
         </article>
         <article>
@@ -145,7 +145,6 @@ export default function DataScienceView({
                 <th>Días estimados integrados</th>
                 <th>Ventanas históricas · 80% central</th>
                 <th>Racha máxima histórica · 80% central</th>
-                <th>Cobertura integrada</th>
               </tr>
             </thead>
             <tbody>
@@ -162,7 +161,7 @@ export default function DataScienceView({
                       <td>
                         <strong>
                           {s.expected.expected === null
-                            ? "Sin cobertura"
+                            ? "Sin estimación"
                             : number(s.expected.expected)}{" "}
                           días / ubicación
                         </strong>
@@ -180,9 +179,6 @@ export default function DataScienceView({
                         {s.longestRun
                           ? `${number(s.longestRun.low)}–${number(s.longestRun.high)} días`
                           : "Muestra insuficiente"}
-                      </td>
-                      <td>
-                        {s.expected.covered}/{s.expected.total} ubicación-fechas
                       </td>
                     </tr>
                   );
@@ -301,7 +297,7 @@ export default function DataScienceView({
         <p className="planning-muted">
           {summary.annual.length} años comunes en {summary.referenceLocations}{" "}
           ubicaciones. El 80% central es el rango entre los percentiles 10 y 90
-          de estas temporadas; su cobertura se comprueba por separado.
+          de estas temporadas; su disponibilidad se comprueba por separado.
         </p>
       </section>
       <section className="science-panel">
@@ -351,7 +347,7 @@ export default function DataScienceView({
           comparten clima y no equivalen a observaciones independientes.
         </p>
         <details>
-          <summary>Resultados, muestra y cobertura por ubicación</summary>
+          <summary>Resultados y muestra por ubicación</summary>
           <div className="planning-table-scroll">
             <table>
               <thead>
@@ -361,7 +357,7 @@ export default function DataScienceView({
                   <th>Selección del modelo</th>
                   <th>Brier / referencia</th>
                   <th>Error de días</th>
-                  <th>Cobertura del rango histórico 80%</th>
+                  <th>Años dentro del rango histórico del 80%</th>
                 </tr>
               </thead>
               <tbody>
@@ -404,8 +400,8 @@ export default function DataScienceView({
         <ol>
           <li>
             <strong>Próximos días:</strong> se buscan ensayos completos en los
-            escenarios meteorológicos de cada coordenada. Se exige cobertura
-            suficiente y se da igual peso a las fuentes utilizables.
+            escenarios meteorológicos de cada coordenada. Se da igual peso a las
+            fuentes utilizables y se excluyen los escenarios incompletos.
           </li>
           <li>
             <strong>Mediano plazo:</strong> cuando existen, se incorporan las
@@ -467,8 +463,8 @@ export default function DataScienceView({
           </li>
           <li>
             Los rangos actuales no son un intervalo validado de la estimación
-            integrada hasta diciembre. La cobertura empírica de los rangos
-            históricos se muestra aunque no llegue al 80%.
+            integrada hasta diciembre. La proporción de años dentro de los
+            rangos históricos se muestra aunque no llegue al 80%.
           </li>
         </ul>
       </section>

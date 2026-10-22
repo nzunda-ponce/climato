@@ -741,7 +741,7 @@ export default function ClimateWorkspace() {
                 setManagement(true);
               }}
             >
-              Ver fuentes, cobertura y validación
+              Ver fuentes y validación
             </button>
           </div>
         )}

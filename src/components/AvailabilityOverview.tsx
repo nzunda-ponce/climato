@@ -207,7 +207,7 @@ export default function AvailabilityOverview({
             <p>
               en promedio por ubicación · pueden ser días separados
               {!next.complete && next.expected !== null
-                ? " · cobertura parcial"
+                ? " · estimación parcial"
                 : ""}
             </p>
           </div>
@@ -254,11 +254,7 @@ export default function AvailabilityOverview({
             </small>
           </div>
           <p className="availability-summary-note">
-            Pronósticos y referencia histórica. Cobertura de datos a 14 días:{" "}
-            {next.total
-              ? `${Math.floor((next.covered / next.total) * 100)}%`
-              : "sin datos"}
-            . {availabilityBacking(next)}. Cobertura no equivale a certeza. Los
+            Pronósticos y referencia histórica. {availabilityBacking(next)}. Los
             días estimados no son días confirmados ni necesariamente
             consecutivos.
           </p>
@@ -359,7 +355,7 @@ export default function AvailabilityOverview({
             <i className="availability-missing-swatch" /> Sin datos
           </span>
           <span>
-            <i className="availability-partial-swatch" /> Cobertura parcial
+            <i className="availability-partial-swatch" /> Estimación parcial
           </span>
         </div>
         {!report ? (
@@ -560,7 +556,7 @@ export default function AvailabilityOverview({
                         : `${number(selectedCell.expected)} días esperados por ubicación`}
                       . {coverage(selectedCell)}.
                       {!selectedCell.complete
-                        ? " Cobertura incompleta; no se extrapolan los faltantes."
+                        ? " No se extrapolan las estimaciones faltantes."
                         : ""}
                     </p>
                     <p>
@@ -592,9 +588,9 @@ export default function AvailabilityOverview({
             <div className="availability-table-note">
               <span>
                 Cada fila promedia las coordenadas de los equipos de esa zona.
-                Tocá una celda para ver sus fuentes y cobertura. Usá las flechas
-                del teclado para recorrer fechas y zonas. En móvil, deslizá para
-                ver más fechas.
+                Tocá una celda para ver sus fuentes y estimaciones. Usá las
+                flechas del teclado para recorrer fechas y zonas. En móvil,
+                deslizá para ver más fechas.
               </span>
               <button onClick={onZones}>Modificar selección</button>
             </div>

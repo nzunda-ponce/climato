@@ -998,8 +998,9 @@ export default function PlanningWorkspace({
                               <p>
                                 Para combinar pronósticos meteorológicos se
                                 exigen al menos dos fuentes con suficientes
-                                simulaciones y cobertura. Una fuente sin
-                                cobertura en esta fecha no anula las otras.
+                                simulaciones y información disponible. Una
+                                fuente sin información disponible en esta fecha
+                                no anula las otras.
                               </p>
                               <ul>
                                 {detailDay.evidence.map((e) => (
@@ -1342,8 +1343,8 @@ export default function PlanningWorkspace({
                   El total suma el pronóstico disponible y, para las fechas
                   restantes, la frecuencia histórica de días aptos en cada
                   ubicación. Es una estimación de disponibilidad para planificar
-                  la campaña, no un calendario de días confirmados. Se indica la
-                  cobertura cuando la descarga aún está incompleta.
+                  la campaña, no un calendario de días confirmados. Los
+                  faltantes se mantienen como estimaciones no disponibles.
                 </p>
                 <div className="planning-table-scroll">
                   <table>
@@ -1354,7 +1355,6 @@ export default function PlanningWorkspace({
                           Días esperados hasta{" "}
                           {report ? date(report.deadline) : "fin de campaña"}
                         </th>
-                        <th>Cobertura de fechas</th>
                         <th>Historia de entrenamiento</th>
                       </tr>
                     </thead>
@@ -1380,9 +1380,6 @@ export default function PlanningWorkspace({
                                 ? " · estimación parcial"
                                 : " · período completo"}
                             </small>
-                          </td>
-                          <td>
-                            {z.remaining.covered}/{z.remaining.total}
                           </td>
                           <td>{z.sources.historyYears} años</td>
                         </tr>

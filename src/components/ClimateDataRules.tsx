@@ -257,7 +257,7 @@ export default function ClimateDataRules({
               </a>
             </section>
             <section className="data-table-section">
-              <h2>Cobertura por zona</h2>
+              <h2>Fuentes por zona</h2>
               <div className="data-table-scroll">
                 <table>
                   <thead>

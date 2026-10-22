@@ -1,0 +1,386 @@
+.insights {
+  margin: 24px 0 28px;
+  color: var(--work-ink, #243b40);
+}
+.insights-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.insights h2 {
+  font-size: 27px;
+  letter-spacing: -1px;
+  margin: 7px 0;
+}
+.insights p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #647671;
+  margin: 6px 0 14px;
+}
+.insights-badge {
+  font-size: 10px;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid #cbdcd1;
+  border-radius: 20px;
+  color: #487267;
+  background: #edf5ef;
+}
+.insights-threshold {
+  padding: 18px 22px;
+  background: #e6efea;
+  border: 1px solid #cfded5;
+  border-radius: 10px;
+}
+.insights-threshold label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px !important;
+  color: #304c44 !important;
+}
+.insights-threshold label strong {
+  font-size: 24px;
+  color: #087f77;
+}
+.insights input[type="range"] {
+  width: 100%;
+  accent-color: #087f77;
+  margin: 12px 0 3px;
+  min-height: 24px;
+  padding: 0;
+}
+.insights-threshold > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #62756c;
+}
+.insights-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: #dfe7df;
+  border: 1px solid #dfe7df;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+.insights-numbers article {
+  padding: 19px;
+  background: #fff;
+}
+.insights-numbers article > span {
+  font-size: 11px;
+  color: #62756c;
+}
+.insights-numbers strong {
+  display: block;
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 10px 0;
+  color: #1e4e46;
+  letter-spacing: -1px;
+}
+.insights-numbers strong small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin-top: 5px;
+}
+.insights-numbers p {
+  font-size: 11px;
+  margin: 8px 0 0;
+}
+.insights-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.insights-card {
+  background: #fff;
+  border: 1px solid #dce5df;
+  border-radius: 10px;
+  padding: 22px;
+  min-width: 0;
+}
+.insights-card h3 {
+  font-size: 17px;
+  letter-spacing: -0.4px;
+  margin: 7px 0 10px;
+}
+.opportunity-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 18px;
+}
+.planning-app .opportunity-calendar button {
+  border: 1px solid #d8e3da;
+  background: #f2f4eb;
+  color: #647345;
+  border-radius: 5px;
+  min-height: 53px;
+  padding: 6px 2px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+}
+.opportunity-calendar button span {
+  font-size: 8px;
+  white-space: nowrap;
+}
+.opportunity-calendar button strong {
+  font-size: 12px;
+}
+.planning-app .opportunity-calendar .favorable {
+  background: #dbede3;
+  border-color: #bedacb;
+  color: #126a53;
+}
+.planning-app .opportunity-calendar .unknown {
+  background: #f4f4f2;
+  color: #88918d;
+}
+.planning-app .opportunity-calendar button[aria-pressed="true"] {
+  outline: 2px solid #087f77;
+  outline-offset: 1px;
+}
+.opportunity-calendar .historical:after {
+  content: "◌";
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 10px;
+  opacity: 0.65;
+}
+.insights-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 9px;
+  color: #6e7c73;
+  margin: 16px 0;
+}
+.insights-calendar-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.insights-calendar-legend i {
+  width: 8px;
+  height: 8px;
+  background: #b8d9c7;
+  border-radius: 2px;
+}
+.insights-calendar-legend i.moderate {
+  background: #e1e6cd;
+}
+.insights-date-readout {
+  border-top: 1px solid #e0e7e0;
+  padding-top: 13px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+}
+.insights-date-readout strong {
+  font-size: 12px;
+  display: block;
+}
+.insights-date-readout span {
+  font-size: 10px;
+  color: #6b7c71;
+  display: block;
+  margin-top: 5px;
+}
+.planning-app .insights-date-readout button {
+  font-size: 11px;
+  padding: 7px 9px;
+  border: 1px solid #cbded2;
+  border-radius: 4px;
+  background: #f2f8f3;
+  color: #087f77;
+  white-space: nowrap;
+}
+.insights-ranking {
+  margin-top: 20px;
+}
+.planning-app .insights-ranking button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #edf0eb;
+  padding: 10px 0;
+  text-align: left;
+  color: #304d44;
+}
+.insights-rank {
+  font:
+    10px Consolas,
+    monospace;
+  color: #98a59b;
+}
+.insights-rank-main {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+}
+.insights-bar {
+  display: block;
+  height: 5px;
+  background: #edf2ed;
+  margin-top: 7px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.insights-bar i {
+  display: block;
+  height: 100%;
+  background: #5b9f89;
+  border-radius: 3px;
+}
+.insights-ranking strong {
+  font-size: 15px;
+  min-width: 40px;
+  text-align: right;
+}
+.insights-ranking strong small {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: #829187;
+}
+.insights .insights-note {
+  font-size: 10px;
+  line-height: 1.7;
+  margin-top: 17px;
+  margin-bottom: 0;
+}
+.insights-accumulation {
+  margin-top: 16px;
+}
+.insights-curve-heading {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+.insights-curve-heading > strong {
+  white-space: nowrap;
+  font-size: 24px;
+  color: #087f77;
+}
+.insights-curve-heading small {
+  font-size: 10px;
+  font-weight: 400;
+}
+.insights-accumulation svg {
+  width: 100%;
+  display: block;
+  margin-top: 12px;
+}
+.insights-accumulation svg text {
+  font:
+    10px "Segoe UI",
+    sans-serif;
+  fill: #728178;
+}
+.insights button:focus-visible {
+  outline: 2px solid #087f77;
+  outline-offset: 3px;
+}
+@media (max-width: 1100px) {
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+  .opportunity-calendar {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .insights-heading {
+    display: block;
+  }
+  .insights-badge {
+    display: inline-block;
+    margin-top: 5px;
+  }
+  .insights-numbers {
+    grid-template-columns: 1fr;
+  }
+  .insights-numbers article {
+    padding: 15px;
+  }
+  .insights-numbers strong {
+    font-size: 26px;
+  }
+  .insights-numbers strong small {
+    display: inline;
+    margin-left: 5px;
+  }
+  .insights-card {
+    padding: 16px;
+  }
+  .opportunity-calendar {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+  .insights-curve-heading {
+    display: block;
+  }
+  .insights-threshold {
+    padding: 14px;
+  }
+  .insights-threshold label {
+    font-size: 11px !important;
+  }
+  .insights-date-readout {
+    flex-wrap: wrap;
+  }
+}
+.work-overview .analytics-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.work-overview .analytics-stats > div:nth-child(3) {
+  display: block;
+}
+.planning-app .work-overview .work-zone > .work-zone-summary {
+  grid-template-columns: minmax(80px, 1fr) 112px minmax(110px, auto) 14px;
+}
+@media (max-width: 1200px) {
+  .planning-app .work-overview .work-zone > .work-zone-summary {
+    grid-template-columns: minmax(75px, 1fr) minmax(100px, auto) 14px;
+  }
+  .work-overview .work-zone-summary .zone-sparkline {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .work-overview .analytics-stats {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .work-overview .analytics-stats > div {
+    border-left: 0;
+    padding: 0;
+  }
+}
+.insights-numbers .insights-reference {
+  display: inline-block;
+  font-size: 9px;
+  margin-top: 8px;
+  color: #936f39;
+  background: #faf4e9;
+  padding: 4px 6px;
+  border-radius: 4px;
+}

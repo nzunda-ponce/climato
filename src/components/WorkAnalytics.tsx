@@ -93,15 +93,6 @@ export function EstimateStats({
         <em>Sobre fechas con datos</em>
       </div>
       <div>
-        <span>Cobertura de datos</span>
-        <strong>
-          {pct(evidence.total ? evidence.covered / evidence.total : null)}
-        </strong>
-        <em>
-          {n(evidence.covered, 0)} de {n(evidence.total, 0)} ubicación-días
-        </em>
-      </div>
-      <div>
         <span>Equipos en análisis</span>
         <strong>{n(count, 0)}</strong>
         <em>{n(evidence.locations, 0)} ubicaciones únicas</em>
@@ -213,8 +204,8 @@ export function TemporalEstimate({
           {active.end !== active.start ? ` – ${shortDate(active.end)}` : ""}
           <small>
             {active.covered
-              ? `${active.complete ? "Cobertura completa" : "Cobertura parcial"} · ${n(active.covered, 0)}/${n(active.total, 0)} ubicación-días`
-              : "Sin cobertura para esta fecha"}
+              ? "Promedio de las estimaciones del período"
+              : "Sin estimación para esta fecha"}
           </small>
         </span>
         <span
@@ -396,7 +387,6 @@ export function TemporalEstimate({
                 <th>Período</th>
                 <th>Prob. media</th>
                 <th>Días esperados / ubicación</th>
-                <th>Cobertura</th>
                 <th>Respaldo</th>
               </tr>
             </thead>
@@ -409,9 +399,6 @@ export function TemporalEstimate({
                   </th>
                   <td>{pct(row.probability)}</td>
                   <td>{n(row.expected)}</td>
-                  <td>
-                    {row.covered}/{row.total}
-                  </td>
                   <td>
                     {row.sourceBreakdown
                       .filter((s) => s.count > 0)
@@ -446,14 +433,11 @@ export function EvidencePanel({
           <span className="analytics-kicker">TRAZABILIDAD</span>
           <h2>De dónde sale la estimación</h2>
         </div>
-        <span className="evidence-status">
-          {evidence.complete ? "Cobertura completa" : "Cobertura parcial"}
-        </span>
       </div>
       <div
         className="evidence-stack"
         role="img"
-        aria-label={`${pct(evidence.total ? evidence.covered / evidence.total : null)} de cobertura. Distribución por fuente en el detalle inferior.`}
+        aria-label="Distribución de las fuentes usadas en las estimaciones."
       >
         {evidence.sourceBreakdown.map((source) =>
           source.count > 0 ? (
@@ -495,7 +479,7 @@ export function EvidencePanel({
           <div className="evidence-missing-row">
             <i />
             <span>
-              <strong>Sin cobertura</strong>
+              <strong>Sin estimación</strong>
               <small>Fechas sin datos; no se reemplazan por cero</small>
             </span>
             <b>
@@ -513,7 +497,6 @@ export function EvidencePanel({
           .map((s) => n(s.contribution))
           .join(" + ") || "sin datos"}{" "}
         = {n(evidence.expected)} días. Los valores se muestran redondeados.
-        Cobertura indica disponibilidad de datos, no precisión del pronóstico.
       </p>
       <details className="evidence-audit">
         <summary>
@@ -688,8 +671,8 @@ function ForecastEvidence({
       ))}
       <p>
         El acuerdo entre modelos no es una garantía de acierto. La combinación
-        operativa exige al menos dos familias con cobertura suficiente; no suma
-        escenarios como si fueran observaciones independientes.
+        operativa exige al menos dos familias con información suficiente; no
+        suma escenarios como si fueran observaciones independientes.
       </p>
     </details>
   );

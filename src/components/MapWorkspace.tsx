@@ -479,7 +479,7 @@ export default function MapWorkspace() {
               {currentLayer.description}
               <span>
                 Superficie orientativa hasta {data?.rules.clusterKm ?? 30} km de
-                cada punto. No extrapola fuera de cobertura.
+                cada punto. No extrapola a ubicaciones sin estimaciones.
               </span>
             </div>
           </aside>
@@ -595,8 +595,8 @@ export default function MapWorkspace() {
           <div className="section-title">
             <h1>Fuentes y validación</h1>
             <p>
-              Cobertura real, disponibilidad de variables y errores. No se
-              entrena con datos inventados.
+              Fuentes, variables disponibles y errores. No se entrena con datos
+              inventados.
             </p>
           </div>
           <div className="source-actions">
@@ -740,16 +740,16 @@ export default function MapWorkspace() {
               La probabilidad de ventana usa el mismo intervalo continuo para
               cada miembro y promedia familias con el mismo peso. Los valores
               faltantes no cuentan como condiciones favorables. La confianza
-              penaliza horizonte, cobertura y dispersión. Los datos ensemble
-              pueden estar interpolados a una hora desde pasos nativos de 3–6
-              horas.
+              penaliza horizonte, información disponible y dispersión. Los datos
+              ensemble pueden estar interpolados a una hora desde pasos nativos
+              de 3–6 horas.
             </p>
             <p>
               La campaña se evalúa mediante trayectorias Monte Carlo con
               miembros compartidos entre regiones y años históricos compartidos.
               El resultado depende del acceso, la capacidad y las zonas sin
-              cobertura. Es una estimación condicionada; todavía no una
-              probabilidad validada contra resultados reales.
+              información disponible. Es una estimación condicionada; todavía no
+              una probabilidad validada contra resultados reales.
             </p>
             <h3>Calibración</h3>
             <p>

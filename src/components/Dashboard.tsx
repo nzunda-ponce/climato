@@ -285,7 +285,7 @@ export default function Dashboard({
             onClick={() => {
               setTab("Campaña");
               setNotice(
-                "Las proyecciones usan escenarios configurables. Revisá los supuestos y la cobertura antes de asignar cuadrillas.",
+                "Las proyecciones usan escenarios configurables. Revisá los supuestos y la información disponible antes de asignar cuadrillas.",
               );
             }}
           >
@@ -492,7 +492,7 @@ export default function Dashboard({
                         {best
                           ? `${best.nearby} equipos pendientes en el grupo · ${bestDay?.window?.start.slice(11, 16)}–${bestDay?.window?.end.slice(11, 16)} · Confirmá acceso y capacidad antes de salir.`
                           : c.total
-                            ? "Las recomendaciones aparecen cuando hay ventanas horarias y cobertura suficiente."
+                            ? "Las recomendaciones aparecen cuando hay ventanas horarias y información suficiente."
                             : "Importá las ubicaciones de Google My Maps o un archivo geográfico."}
                       </p>
                     </div>
@@ -536,7 +536,7 @@ export default function Dashboard({
                             <p>
                               {assignment.jobs.length
                                 ? `${assignment.jobs.length} trabajos sugeridos · ${assignment.hasBlockedBooking ? "Revisar asignación: condiciones no aptas" : assignment.needsAccessCheck ? "Validar acceso antes de salir" : "Acceso apto estimado"}`
-                                : "Revisá otra fecha o actualizá la cobertura."}
+                                : "Revisá otra fecha o actualizá las estimaciones."}
                             </p>
                             <div className="crew-jobs">
                               {assignment.jobs.map((p) => (
@@ -798,7 +798,7 @@ export default function Dashboard({
                           <p>
                             {data.updatedAt
                               ? "Menos de 2 oportunidades en el horizonte consultado."
-                              : "Aún no hay cobertura meteorológica para evaluarlos."}
+                              : "Aún no hay información meteorológica para evaluarlos."}
                           </p>
                         </div>
                       </div>
@@ -897,7 +897,7 @@ export default function Dashboard({
                                     <span>
                                       {d.coverage
                                         ? "Sin ventana"
-                                        : "Sin cobertura"}
+                                        : "Sin estimación"}
                                     </span>
                                   )}
                                 </button>
