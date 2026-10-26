@@ -1,4 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run db:generate && npm run build"
+  "buildCommand": "npm run db:generate && npm run build",
+  "git": {
+    "deploymentEnabled": false
+  }
 }
